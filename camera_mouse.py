@@ -5,25 +5,27 @@ import cv2 as cv
 import tkinter as tk
 from PIL import Image, ImageTk
 
-cap = cv.VideoCapture(0)
-if not cap.isOpened():
-    print("Cannot open camera")
-    exit()
-while True:
-    # Capture frame-by-frame
+cap : cv.VideoCapture = None
+
+def start_camera():
+    global cap
+    cap = cv.VideoCapture(0)
+    if not cap.isOpened():
+        print("Camera failed to initialize.")
+        cap = None
+        return
+    
+
+def get_virtual_position():
+    global cap
+    if cap == None:
+        print("Camera not initialized.")
+        return
     ret, frame = cap.read()
-
-    # if frame is read correctly ret is True
     if not ret:
-        print("Can't receive frame (stream end?). Exiting ...")
-        break
-    # Our operations on the frame come here
-    gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-    # Display the resulting frame
-    cv.imshow('frame', gray)
-    if cv.waitKey(1) == ord('q'):
-        break
+        print("Frame failed to recieve.")
+        return
 
-# When everything done, release the capture
-cap.release()
-cv.destroyAllWindows()
+def end_camera():
+    global cap
+    cap.release()
