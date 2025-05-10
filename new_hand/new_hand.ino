@@ -119,6 +119,17 @@ void reset_offsets() {
   gz_offset = gz; // calibration data for the Z-axis angular velocity
 }
 
+#define INIT_PHASE 0
+#define AWAKE_PHASE 1
+#define LED_CHECK_PHASE 2
+#define MAX_STRETCH_GET_PHASE 3
+#define PAUSE_PHASE 4
+#define STRETCH_ESCAPE_PHASE 5
+#define ESCAPE_NOTED_PHASE 6
+#define MIN_STRETCH_PREPARE_PHASE 7
+#define MIN_STRETCH_GET_PHASE 8
+
+
 // read potentiometer data of each finger
 void finger() {
   static uint32_t timer_sampling;
@@ -144,22 +155,22 @@ void finger() {
   {
     switch (init_step)
     {
-      case 0:
+      case INIT_PHASE:
         set_leds(false, false, false, false, false);
         timer_init = millis() + 20;
         init_step++;
         break;
-      case 1:
+      case AWAKE_PHASE:
         set_leds(true, true, true, true, true);
         timer_init = millis() + 200;
         init_step++;
         break;
-      case 2:
+      case LED_CHECK_PHASE:
         set_leds(false, false, false, false, false);
         timer_init = millis() + 50;
         init_step++;
         break;
-      case 3:
+      case MAX_STRETCH_GET_PHASE:
         set_leds(true, true, true, true, true);
         timer_init = millis() + 500;
         init_step++;
@@ -172,10 +183,10 @@ void finger() {
         }
         Serial.println();
         break;
-      case 4:
+      case PAUSE_PHASE:
         init_step++;
         break;
-      case 5:
+      case STRETCH_ESCAPE_PHASE:
         if ((max_list[1] - sampling[1]) > 50)
         {
           init_step++;
@@ -183,17 +194,17 @@ void finger() {
           timer_init = millis() + 2000;
         }
         break;
-      case 6:
+      case ESCAPE_NOTED_PHASE:
         set_leds(true, true, true, true, true);
         timer_init = millis() + 200;
         init_step++;
         break;
-      case 7:
+      case MIN_STRETCH_PREPARE_PHASE:
         set_leds(false, false, false, false, false);
         timer_init = millis() + 50;
         init_step++;
         break;
-      case 8:
+      case MIN_STRETCH_GET_PHASE:
         set_leds(true, false, true, false, true);
         timer_init = millis() + 500;
         init_step++;
