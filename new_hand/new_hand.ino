@@ -90,6 +90,16 @@ void setup() {
   accelgyro.setFullScaleGyroRange(3); // set the range of angular velocity
   accelgyro.setFullScaleAccelRange(1); // set the range of acceleration
   delay(200);
+  reset_offsets();
+
+  Serial.println();
+  Bth.print("AT+RX");  // print Bluetooth device parameters
+  delay(100);
+  bth_rx = Bth.readString();
+  Serial.print(bth_rx);
+}
+
+void reset_offsets() {
   accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);  // obtain current data of each axis for calibration
   ax_offset = ax;  // calibration data for the X-axis acceleration
   ay_offset = ay;  // calibration data for the Y-axis acceleration
@@ -97,12 +107,6 @@ void setup() {
   gx_offset = gx; // calibration data for the X-axis angular velocity
   gy_offset = gy; // calibration data for the Y-axis angular velocity
   gz_offset = gz; // calibration data for the Z-axis angular velocity
-
-  Serial.println();
-  Bth.print("AT+RX");  // print Bluetooth device parameters
-  delay(100);
-  bth_rx = Bth.readString();
-  Serial.print(bth_rx);
 }
 
 // read potentiometer data of each finger
