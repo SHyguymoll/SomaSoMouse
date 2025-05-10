@@ -283,10 +283,7 @@ void update_mpu6050()
 // print data
 void print_data()
 {
-  static uint32_t timer_printlog;
-  if (timer_printlog <= millis())  
-  {
-    for (int i = 14; i <= 18; i++)
+  for (int i = 14; i <= 18; i++)
     {
       Serial.print(data[i - 14]);
       Serial.print("  ");
@@ -304,10 +301,7 @@ void print_data()
     Serial.print(" GY: ");
     Serial.print(gy);
     Serial.print(" GZ: ");
-    Serial.print(gz);
-    timer_printlog = millis() + 333;
-    Serial.println();
-  }
+    Serial.println(gz);
 
 }
 
