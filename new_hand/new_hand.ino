@@ -334,10 +334,11 @@ void loop() {
     if (digitalRead(7) == false && key_state == false)
     {
       delay(30);
-      // If K3 is pressed, switch the control mode and display corresponding numbers of LEDs 
+      // If K3 is pressed, print debug information
       if (digitalRead(7) == false)
       {
         key_state = true;
+        print_data();
         if (mode == 5)
         {
           mode = 0;
@@ -352,5 +353,5 @@ void loop() {
       }
     }
   }
-  print_data();  // printing sensor data facilitates debugging 
+  //print_data();  // printing sensor data facilitates debugging 
 }
