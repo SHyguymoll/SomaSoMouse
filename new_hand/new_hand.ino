@@ -1,8 +1,8 @@
 /*
-@company: Hiwonder
-@date:    2024-03-01
-@version:  2.0
-@description: wireless glove control program
+@original-company: Hiwonder
+@original-date:    2024-03-01
+@version:  2.0_shy
+@description: program of hardware component of SomaSoMouse
 */
 
 #include <SoftwareSerial.h> //software serial library
@@ -13,6 +13,7 @@
 // RX and TX pins of the Bluetooth
 #define BTH_RX 11
 #define BTH_TX 12
+
 
 // create the minimum and maximum store values of the potentiometers
 float min_list[5] = {0, 0, 0, 0, 0};
@@ -49,7 +50,7 @@ float gx1, gy1, gz1;
 // accelerometer calibration variable
 int ax_offset, ay_offset, az_offset, gx_offset, gy_offset, gz_offset;
 
-String bth_rx;
+String bth_string;
 
 void set_leds(bool first, bool second, bool third, bool fourth, bool fifth) {
   digitalWrite(2, first ? LOW : HIGH);
@@ -128,6 +129,7 @@ void finger() {
   static uint32_t timer_sampling;
   static uint32_t timer_init;
   static uint8_t init_step = 0;
+  static String msg = "";
   if (timer_sampling <= millis())
   {
     for (int i = 14; i <= 18; i++)
@@ -141,7 +143,23 @@ void finger() {
       data[i - 14] = data[i - 14] > 2500 ? 2500 : data[i - 14];  // limit the maximum value to 2500
       data[i - 14] = data[i - 14] < 500 ? 500 : data[ i - 14];   // limit the minimum value to 500
     }
+    
+    // After calibration, it is safe to start sending data
+    if (!turn_on) {
+      msg = "F|";
+      for (int i = 0; i < 5; i++) {
+        msg.concat(data[i]);
+        msg.concat("|");
+      }
+      Bth.print(msg);
+    }
+    // Otherwise, send calibration message
+    else {
+      Bth.print("CALIBRATING---------");
+    }
+    
     timer_sampling = millis() + 10;
+
   }
 
   if (turn_on && timer_init < millis())
@@ -293,9 +311,7 @@ void print_data()
   set_leds(false, false, false, false, false);
 }
 
-int mode = 0;
 bool key_state = false;
-
 
 void actions() {
   if (turn_on)
@@ -306,9 +322,9 @@ void actions() {
     if (str.startsWith("AT")) {
       Bth.print(str);
       delay(150);
-      bth_rx = Bth.readString();
-      Serial.println(bth_rx);
-      Bth.flush();
+      bth_string = Bth.readString();
+      Serial.println(bth_string);
+      //Bth.flush();
     }
     else if (str.equals("PRINT")) {
       print_data();
@@ -321,34 +337,36 @@ void actions() {
   // if K3 button is pressed 
   if(key_state == true && digitalRead(7) == true)
   {
-    delay(30);
+    Serial.println("BUTTON RELEASED");
+    delay(50);
     if(digitalRead(7) == true)
       key_state = false;
   }
   if (digitalRead(7) == false && key_state == false)
   {
-    delay(30);
+    Serial.println("PRINTING DEBUG INFORMATION");
+    delay(50);
+    
     // If K3 is pressed, print debug information
     if (digitalRead(7) == false)
     {
       key_state = true;
       print_data();
-      if (mode == 5)
-      {
-        mode = 0;
-      }
-      else
-        mode++;
     }
+    Serial.println("INFO PRINTED");
   }
 }
 
 void loop() {
-  //return;
+  // send data over characteristic at BAUD rate in each update
   finger();  // update data of finger potentiometers 
   update_mpu6050();  // update data of inclination sensor 
 
   actions();
+
+  
+  
+  //Bth.print("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ");
 
   
   //print_data();  // printing sensor data facilitates debugging 
