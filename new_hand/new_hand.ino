@@ -51,6 +51,14 @@ int ax_offset, ay_offset, az_offset, gx_offset, gy_offset, gz_offset;
 
 String bth_rx;
 
+void set_leds(bool first, bool second, bool third, bool fourth, bool fifth) {
+  digitalWrite(2, first ? LOW : HIGH);
+  digitalWrite(3, second ? LOW : HIGH);
+  digitalWrite(4, third ? LOW : HIGH);
+  digitalWrite(5, fourth ? LOW : HIGH);
+  digitalWrite(6, fifth ? LOW : HIGH);
+}
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
@@ -137,38 +145,22 @@ void finger() {
     switch (init_step)
     {
       case 0:
-        digitalWrite(2, LOW);
-        digitalWrite(3, LOW);
-        digitalWrite(4, LOW);
-        digitalWrite(5, LOW);
-        digitalWrite(6, LOW);
+        set_leds(false, false, false, false, false);
         timer_init = millis() + 20;
         init_step++;
         break;
       case 1:
-        digitalWrite(2, HIGH);
-        digitalWrite(3, HIGH);
-        digitalWrite(4, HIGH);
-        digitalWrite(5, HIGH);
-        digitalWrite(6, HIGH);
+        set_leds(true, true, true, true, true);
         timer_init = millis() + 200;
         init_step++;
         break;
       case 2:
-        digitalWrite(2, LOW);
-        digitalWrite(3, LOW);
-        digitalWrite(4, LOW);
-        digitalWrite(5, LOW);
-        digitalWrite(6, LOW);
+        set_leds(false, false, false, false, false);
         timer_init = millis() + 50;
         init_step++;
         break;
       case 3:
-        digitalWrite(2, HIGH);
-        digitalWrite(3, HIGH);
-        digitalWrite(4, HIGH);
-        digitalWrite(5, HIGH);
-        digitalWrite(6, HIGH);
+        set_leds(true, true, true, true, true);
         timer_init = millis() + 500;
         init_step++;
         Serial.print("max_list:");
@@ -187,38 +179,22 @@ void finger() {
         if ((max_list[1] - sampling[1]) > 50)
         {
           init_step++;
-          digitalWrite(2, LOW);
-          digitalWrite(3, LOW);
-          digitalWrite(4, LOW);
-          digitalWrite(5, LOW);
-          digitalWrite(6, LOW);
+          set_leds(false, false, false, false, false);
           timer_init = millis() + 2000;
         }
         break;
       case 6:
-        digitalWrite(2, HIGH);
-        digitalWrite(3, HIGH);
-        digitalWrite(4, HIGH);
-        digitalWrite(5, HIGH);
-        digitalWrite(6, HIGH);
+        set_leds(true, true, true, true, true);
         timer_init = millis() + 200;
         init_step++;
         break;
       case 7:
-        digitalWrite(2, LOW);
-        digitalWrite(3, LOW);
-        digitalWrite(4, LOW);
-        digitalWrite(5, LOW);
-        digitalWrite(6, LOW);
+        set_leds(false, false, false, false, false);
         timer_init = millis() + 50;
         init_step++;
         break;
       case 8:
-        digitalWrite(2, HIGH);
-        digitalWrite(3, HIGH);
-        digitalWrite(4, HIGH);
-        digitalWrite(5, HIGH);
-        digitalWrite(6, HIGH);
+        set_leds(true, true, true, true, true);
         timer_init = millis() + 500;
         init_step++;
         Serial.print("min_list:");
