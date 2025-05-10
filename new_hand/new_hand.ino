@@ -311,6 +311,8 @@ void loop() {
         print_data();
       } else if (str.equals("POS_R")) {
         reset_offsets();
+      } else if (str.startsWith("LED") && str.length() > 6) {
+        set_leds(str.charAt(3) == '1', str.charAt(4) == '1', str.charAt(5) == '1', str.charAt(6) == '1', str.charAt(7) == '1');
       }
     }
     // if K3 button is pressed 
