@@ -194,7 +194,7 @@ void finger() {
         init_step++;
         break;
       case 8:
-        set_leds(true, true, true, true, true);
+        set_leds(true, false, true, false, true);
         timer_init = millis() + 500;
         init_step++;
         Serial.print("min_list:");
