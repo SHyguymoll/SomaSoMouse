@@ -72,8 +72,10 @@ void setup() {
   // configure Bluetooth
   Bth.begin(9600);
   delay(250);
-  Bth.print("AT+ROLE=S");  // set Bluetooth to master mode
-  delay(100);
+  Bth.print("AT+ROLE=S");  // set Bluetooth to slave mode
+  delay(150);
+  Bth.flush();
+  delay(150);
   
   //Bth.print("AT+NAME=handbot");  // set Bluetooth name
   //delay(200);
