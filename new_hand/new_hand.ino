@@ -313,15 +313,28 @@ int mode = 0;
 bool key_state = false;
 
 void loop() {
-  if (Serial.available()) {
-
-  }
-  return;
+  //return;
   finger();  // update data of finger potentiometers 
   update_mpu6050();  // update data of inclination sensor 
 
   if (turn_on == false) // After the wireless glove is started, the calibration for potentiometers is completed 
   {
+    if (Serial.available()) { // Update HC-08 module
+      String str = Serial.readString();
+      Serial.println(str);
+      if (str.startsWith("AT")) {
+        Bth.print(str);
+        delay(150);
+        bth_rx = Bth.readString();
+        Serial.println(bth_rx);
+        Bth.flush();
+      }
+      else if (str.equals("PRINT")) {
+        print_data();
+      } else if (str.equals("POS_R")) {
+        reset_offsets();
+      }
+    }
     // if K3 button is pressed 
     if(key_state == true && digitalRead(7) == true)
     {
