@@ -149,7 +149,7 @@ void finger() {
     switch (init_step)
     {
       case INIT_PHASE:
-        set_leds(false, false, false, false, false);
+        set_leds(true, false, true, false, true);
         timer_init = millis() + 20;
         init_step++;
         break;
@@ -159,7 +159,7 @@ void finger() {
         init_step++;
         break;
       case LED_CHECK_PHASE:
-        set_leds(true, false, false, false, false);
+        set_leds(true, false, false, false, true);
         timer_init = millis() + 50;
         init_step++;
         break;
@@ -193,7 +193,7 @@ void finger() {
         init_step++;
         break;
       case MIN_STRETCH_PREPARE_PHASE:
-        set_leds(true, true, true, true, false);
+        set_leds(true, true, true, true, true);
         timer_init = millis() + 50;
         init_step++;
         break;
@@ -211,6 +211,7 @@ void finger() {
         Serial.println();
         //lsc.runActionGroup(0, 1);
         turn_on = false;
+        set_leds(false, false, false, false, false);
         break;
 
       default:
@@ -269,6 +270,7 @@ void update_mpu6050()
 // print data
 void print_data()
 {
+  set_leds(true, true, true, true, true);
   for (int i = 14; i <= 18; i++)
     {
       Serial.print(data[i - 14]);
@@ -288,7 +290,7 @@ void print_data()
     Serial.print(gy);
     Serial.print(" GZ: ");
     Serial.println(gz);
-
+  set_leds(false, false, false, false, false);
 }
 
 int mode = 0;
@@ -337,11 +339,6 @@ void actions() {
       }
       else
         mode++;
-      digitalWrite(2, mode < 1 ? HIGH : LOW);
-      digitalWrite(3, mode < 2 ? HIGH : LOW);
-      digitalWrite(4, mode < 3 ? HIGH : LOW);
-      digitalWrite(5, mode < 4 ? HIGH : LOW);
-      digitalWrite(6, mode < 5 ? HIGH : LOW);
     }
   }
 }
