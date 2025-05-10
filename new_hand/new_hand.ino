@@ -81,17 +81,16 @@ void setup() {
   Bth.begin(9600);
   delay(250);
   Bth.print("AT+ROLE=S");  // set Bluetooth to slave mode
-  delay(150);
-  Bth.flush();
-  delay(150);
+  delay(275);
   
-  //Bth.print("AT+NAME=handbot");  // set Bluetooth name
-  //delay(200);
-
-  
+  Bth.print("AT+NAME=handbot");  // set Bluetooth name
+  delay(150);
+  Bth.print("AT+PIN=0000");  // set Bluetooth PIN
+  delay(150);
   Bth.print("AT+RESET");  // perform a soft reset of the Bluetooth module
   delay(250);
-  Bth.flush();
+  Bth.print("AT+MODE=0"); // Begin pairing mode
+  delay(200);
 
   // configure MPU6050
   Wire.begin();
@@ -101,12 +100,6 @@ void setup() {
   accelgyro.setFullScaleAccelRange(1); // set the range of acceleration
   delay(200);
   reset_offsets();
-
-  Serial.println();
-  Bth.print("AT+RX");  // print Bluetooth device parameters
-  delay(100);
-  bth_rx = Bth.readString();
-  Serial.print(bth_rx);
 }
 
 void reset_offsets() {
@@ -301,59 +294,65 @@ void print_data()
 int mode = 0;
 bool key_state = false;
 
+
+void actions() {
+  if (turn_on)
+    return;
+  if (Serial.available()) { // Update HC-08 module
+    String str = Serial.readString();
+    Serial.println(str);
+    if (str.startsWith("AT")) {
+      Bth.print(str);
+      delay(150);
+      bth_rx = Bth.readString();
+      Serial.println(bth_rx);
+      Bth.flush();
+    }
+    else if (str.equals("PRINT")) {
+      print_data();
+    } else if (str.equals("POS_R")) {
+      reset_offsets();
+    } else if (str.startsWith("LED") && str.length() > 6) {
+      set_leds(str.charAt(3) == '1', str.charAt(4) == '1', str.charAt(5) == '1', str.charAt(6) == '1', str.charAt(7) == '1');
+    }
+  }
+  // if K3 button is pressed 
+  if(key_state == true && digitalRead(7) == true)
+  {
+    delay(30);
+    if(digitalRead(7) == true)
+      key_state = false;
+  }
+  if (digitalRead(7) == false && key_state == false)
+  {
+    delay(30);
+    // If K3 is pressed, print debug information
+    if (digitalRead(7) == false)
+    {
+      key_state = true;
+      print_data();
+      if (mode == 5)
+      {
+        mode = 0;
+      }
+      else
+        mode++;
+      digitalWrite(2, mode < 1 ? HIGH : LOW);
+      digitalWrite(3, mode < 2 ? HIGH : LOW);
+      digitalWrite(4, mode < 3 ? HIGH : LOW);
+      digitalWrite(5, mode < 4 ? HIGH : LOW);
+      digitalWrite(6, mode < 5 ? HIGH : LOW);
+    }
+  }
+}
+
 void loop() {
   //return;
   finger();  // update data of finger potentiometers 
   update_mpu6050();  // update data of inclination sensor 
 
-  if (turn_on == false) // After the wireless glove is started, the calibration for potentiometers is completed 
-  {
-    if (Serial.available()) { // Update HC-08 module
-      String str = Serial.readString();
-      Serial.println(str);
-      if (str.startsWith("AT")) {
-        Bth.print(str);
-        delay(150);
-        bth_rx = Bth.readString();
-        Serial.println(bth_rx);
-        Bth.flush();
-      }
-      else if (str.equals("PRINT")) {
-        print_data();
-      } else if (str.equals("POS_R")) {
-        reset_offsets();
-      } else if (str.startsWith("LED") && str.length() > 6) {
-        set_leds(str.charAt(3) == '1', str.charAt(4) == '1', str.charAt(5) == '1', str.charAt(6) == '1', str.charAt(7) == '1');
-      }
-    }
-    // if K3 button is pressed 
-    if(key_state == true && digitalRead(7) == true)
-    {
-      delay(30);
-      if(digitalRead(7) == true)
-        key_state = false;
-    }
-    if (digitalRead(7) == false && key_state == false)
-    {
-      delay(30);
-      // If K3 is pressed, print debug information
-      if (digitalRead(7) == false)
-      {
-        key_state = true;
-        print_data();
-        if (mode == 5)
-        {
-          mode = 0;
-        }
-        else
-          mode++;
-        digitalWrite(2, mode < 1 ? HIGH : LOW);
-        digitalWrite(3, mode < 2 ? HIGH : LOW);
-        digitalWrite(4, mode < 3 ? HIGH : LOW);
-        digitalWrite(5, mode < 4 ? HIGH : LOW);
-        digitalWrite(6, mode < 5 ? HIGH : LOW);
-      }
-    }
-  }
+  actions();
+
+  
   //print_data();  // printing sensor data facilitates debugging 
 }
