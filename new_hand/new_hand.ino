@@ -166,12 +166,12 @@ void finger() {
         init_step++;
         break;
       case LED_CHECK_PHASE:
-        set_leds(false, false, false, false, false);
+        set_leds(true, false, false, false, false);
         timer_init = millis() + 50;
         init_step++;
         break;
       case MAX_STRETCH_GET_PHASE:
-        set_leds(true, true, true, true, true);
+        set_leds(true, true, false, false, false);
         timer_init = millis() + 500;
         init_step++;
         Serial.print("max_list:");
@@ -195,12 +195,12 @@ void finger() {
         }
         break;
       case ESCAPE_NOTED_PHASE:
-        set_leds(true, true, true, true, true);
+        set_leds(true, true, true, false, false);
         timer_init = millis() + 200;
         init_step++;
         break;
       case MIN_STRETCH_PREPARE_PHASE:
-        set_leds(false, false, false, false, false);
+        set_leds(true, true, true, true, false);
         timer_init = millis() + 50;
         init_step++;
         break;
