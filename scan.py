@@ -21,7 +21,7 @@ if __name__ == "__main__":
     adapter.set_callback_on_scan_found(lambda peripheral: print(f"Found {peripheral.identifier()} [{peripheral.address()}]"))
 
     # Scan for 5 seconds
-    adapter.scan_for(10000)
+    adapter.scan_for(5000)
     peripherals = adapter.scan_get_results()
 
     # Query the user to pick a peripheral
