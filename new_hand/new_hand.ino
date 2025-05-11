@@ -149,11 +149,11 @@ void finger() {
         msg.concat(data[i]);
         msg.concat("|");
       }
-      Bth.print(msg);
+      Bth.write(msg.c_str());
     }
     // Otherwise, send calibration message
     else {
-      Bth.print("CALIBRATING---------");
+      Bth.write("CALIBRATING---------");
     }
     
     timer_sampling = millis() + 10;
@@ -225,7 +225,6 @@ void finger() {
           Serial.print("-");
         }
         Serial.println();
-        //lsc.runActionGroup(0, 1);
         turn_on = false;
         set_leds(false, false, false, false, false);
         break;
