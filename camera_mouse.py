@@ -2,7 +2,6 @@
 
 import numpy as np
 import cv2 as cv
-import tkinter as tk
 from PIL import Image, ImageTk
 
 cap : cv.VideoCapture = None
