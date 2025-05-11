@@ -22,8 +22,6 @@ float max_list[5] = {255, 255, 255, 255, 255};
 float sampling[5] = {0, 0, 0, 0, 0}; 
 // finger-related servo variables
 float data[5] = {1500, 1500, 1500, 1500, 1500};
-uint16_t ServePwm[5] = {1500, 1500, 1500, 1500, 1500};
-uint16_t ServoPwmSet[5] = {1500, 1500, 1500, 1500, 1500};
 // potentiometer calibration flag
 bool turn_on = true;
 
