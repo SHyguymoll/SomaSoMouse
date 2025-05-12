@@ -20,8 +20,7 @@ float min_list[5] = {0, 0, 0, 0, 0};
 float max_list[5] = {255, 255, 255, 255, 255};
 // data variables read by each finger
 float sampling[5] = {0, 0, 0, 0, 0}; 
-// finger-related servo variables
-float data[5] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
+
 // potentiometer calibration flag
 bool turn_on = true;
 
@@ -29,17 +28,15 @@ bool turn_on = true;
 SoftwareSerial Bth(BTH_RX, BTH_TX);
 
 struct finger_d {
-  uint8_t header = 0xFF;
+  uint8_t header[2] = {0xF1, 0xF1};
   float thumb = 0.0f;
   float pointer = 0.0f;
   float middle = 0.0f;
   float ring = 0.0f;
   float pinky = 0.0f;
-  uint8_t footer = 0xFF;
 };
 
-#define MIN_STRETCH_VAL 0.0f
-#define MAX_STRETCH_VAL 255.0f
+finger_d fingers;
 
 // float parameter mapping function
 float float_map(float in, float left_in, float right_in, float left_out, float right_out)
@@ -55,19 +52,29 @@ float map_and_clamp(float in, float left_in, float right_in, float left_out, flo
   return out;
 }
 
+#define R_OUT 100
+#define L_OUT 200
+
 // MPU6050 related variables
 MPU6050 accelgyro;
 int16_t ax, ay, az;
 int16_t gx, gy, gz;
 float ax0, ay0, az0;
 float gx0, gy0, gz0;
-float ax1, ay1, az1;
-float gx1, gy1, gz1;
 
 // accelerometer calibration variable
 int ax_offset, ay_offset, az_offset, gx_offset, gy_offset, gz_offset;
 
-String bth_string;
+// position struct to be sent over bluetooth
+struct position_d {
+  uint8_t header[2] = {0xF0, 0xF0};
+  float ax1, ay1, az1;
+  float gx1, gy1, gz1;
+  float radianX_last; // the final obtained X-axis inclination angle
+  float radianY_last; // the final obtained Y-axis inclination angle
+};
+
+position_d pos_data;
 
 void set_leds(bool first, bool second, bool third, bool fourth, bool fifth) {
   digitalWrite(2, first ? LOW : HIGH);
@@ -121,6 +128,7 @@ void setup() {
 }
 
 void reset_offsets() {
+  
   accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);  // obtain current data of each axis for calibration
   ax_offset = ax;  // calibration data for the X-axis acceleration
   ay_offset = ay;  // calibration data for the Y-axis acceleration
@@ -146,42 +154,29 @@ void finger() {
   static uint32_t timer_init;
   static uint8_t init_step = 0;
   static finger_d fingers;
-  
+
   if (timer_sampling <= millis())
   {
-    for (int i = 14; i <= 18; i++)
-    {
-      if (i < 18)
-        sampling[i - 14] += analogRead(i); // read data of each finger
-      else
-        sampling[i - 14] += analogRead(A6);  // Read data of little finger. I2C uses A4 and A5 ports, therefore, it cannot read continuously starting from A0
-      sampling[i - 14] = sampling[i - 14] / 2.0; // obtain the average value between the previous and current measurement values
-      data[i - 14] = map_and_clamp( sampling[i - 14],min_list[i - 14], max_list[i - 14], 200, 100); // Map the measured value to 100-200, with 100 for making a fist and 200 for opening the robotic hand
-    }
     
-    fingers.thumb = data[0];
-    fingers.pointer = data[1];
-    fingers.middle = data[2];
-    fingers.ring = data[3];
-    fingers.pinky = data[4];
+    sampling[0] += analogRead(14);
+    sampling[0] /= 2.0;
+    fingers.thumb = map_and_clamp( sampling[0],min_list[0], max_list[0], L_OUT, R_OUT);
+    sampling[1] += analogRead(15);
+    sampling[1] /= 2.0;
+    fingers.pointer = map_and_clamp( sampling[1],min_list[1], max_list[1], L_OUT, R_OUT);
+    sampling[2] += analogRead(16);
+    sampling[2] /= 2.0;
+    fingers.middle = map_and_clamp( sampling[2],min_list[2], max_list[2], L_OUT, R_OUT);
+    sampling[3] += analogRead(17);
+    sampling[3] /= 2.0;
+    fingers.ring = map_and_clamp( sampling[3],min_list[3], max_list[3], L_OUT, R_OUT);
+    sampling[4] += analogRead(A6); // Read data of little finger. I2C uses A4 and A5 ports, therefore, it cannot read continuously starting from A0
+    sampling[4] /= 2.0;
+    fingers.pinky = map_and_clamp( sampling[4],min_list[4], max_list[4], L_OUT, R_OUT);
 
-    
     // After calibration, it is safe to start sending data
     if (!turn_on) {
       Bth.write((uint8_t *) &fingers, sizeof(finger_d));
-      //Serial.println("data over line:");
-      //Serial.write((uint8_t *) &fingers, sizeof(finger_d));
-      //Serial.println("\nactual data:");
-      //Serial.print(fingers.thumb, 6);
-      //Serial.print(" ");
-      //Serial.print(fingers.pointer, 6);
-      //Serial.print(" ");
-      //Serial.print(fingers.middle, 6);
-      //Serial.print(" ");
-      //Serial.print(fingers.ring, 6);
-      //Serial.print(" ");
-      //Serial.print(fingers.pinky, 6);
-      //Serial.println();
     }
     // Otherwise, send calibration message
     else {
@@ -271,8 +266,6 @@ void finger() {
 float radianX;
 float radianY;
 float radianZ;
-float radianX_last; // the final obtained X-axis inclination angle
-float radianY_last; // the final obtained Y-axis inclination angle
 
 
 // update data of inclination sensor
@@ -288,116 +281,71 @@ void update_mpu6050()
     ax0 = ((float)(ax)) * 0.3 + ax0 * 0.7;  // filter the read value
     ay0 = ((float)(ay)) * 0.3 + ay0 * 0.7;
     az0 = ((float)(az)) * 0.3 + az0 * 0.7;
-    ax1 = (ax0 - ax_offset) /  8192.0;  // calibrate and convert to the multiples of the gravity acceleration
-    ay1 = (ay0 - ay_offset) /  8192.0;
-    az1 = (az0 - az_offset) /  8192.0;
+    pos_data.ax1 = (ax0 - ax_offset) /  8192.0;  // calibrate and convert to the multiples of the gravity acceleration
+    pos_data.ay1 = (ay0 - ay_offset) /  8192.0;
+    pos_data.az1 = (az0 - az_offset) /  8192.0;
 
     gx0 = ((float)(gx)) * 0.3 + gx0 * 0.7;  // filter the read value of angular velocity
     gy0 = ((float)(gy)) * 0.3 + gy0 * 0.7;
     gz0 = ((float)(gz)) * 0.3 + gz0 * 0.7;
-    gx1 = (gx0 - gx_offset);  // calibrate angular velocity
-    gy1 = (gy0 - gy_offset);
-    gz1 = (gz0 - gz_offset);
+    pos_data.gx1 = (gx0 - gx_offset);  // calibrate angular velocity
+    pos_data.gy1 = (gy0 - gy_offset);
+    pos_data.gz1 = (gz0 - gz_offset);
 
 
     // complementary calculation for x-axis inclination angle
-    radianX = atan2(ay1, az1);
+    radianX = atan2(pos_data.ay1, pos_data.az1);
     radianX = radianX * 180.0 / 3.1415926;
-    float radian_temp = (float)(gx1) / 16.4 * 0.02;
-    radianX_last = 0.8 * (radianX_last + radian_temp) + (-radianX) * 0.2;
+    float radian_temp = (float)(pos_data.gx1) / 16.4 * 0.02;
+    pos_data.radianX_last = 0.8 * (pos_data.radianX_last + radian_temp) + (-radianX) * 0.2;
 
     // complementary calculation for y-axis inclination angle
-    radianY = atan2(ax1, az1);
+    radianY = atan2(pos_data.ax1, pos_data.az1);
     radianY = radianY * 180.0 / 3.1415926;
-    radian_temp = (float)(gy1) / 16.4 * 0.01;
-    radianY_last = 0.8 * (radianY_last + radian_temp) + (-radianY) * 0.2;
+    radian_temp = (float)(pos_data.gy1) / 16.4 * 0.01;
+    pos_data.radianY_last = 0.8 * (pos_data.radianY_last + radian_temp) + (-radianY) * 0.2;
+
+    if (!turn_on) {
+      Bth.write((uint8_t *) &pos_data, sizeof(position_d));
+    }
+    // Otherwise, send calibration message
+    else {
+      Bth.write("-----CALIBRATING----");
+    }
   }
 }
 
-// print data
-//void print_data()
-//{
-//  set_leds(true, true, true, true, true);
-//  for (int i = 14; i <= 18; i++)
-//    {
-//      Serial.print(data[i - 14]);
-//      Serial.print("  ");
-//      // Serial.print(float_map(min_list[i-14], max_list[i-14], 500,2500,sampling[i-14]));
-//    }
-//    //Serial.println();
-//    Serial.print("AX: ");
-//    Serial.print(ax);
-//    Serial.print(" AY: ");
-//    Serial.print(ay);
-//    Serial.print(" AZ: ");
-//    Serial.print(az);
-//    Serial.print(" GX: ");
-//    Serial.print(gx);
-//    Serial.print(" GY: ");
-//    Serial.print(gy);
-//    Serial.print(" GZ: ");
-//    Serial.println(gz);
-//  set_leds(false, false, false, false, false);
-//}
-
 bool key_state = false;
 
-//void actions() {
-//  if (turn_on)
-//    return;
-//  if (Serial.available()) { // Update HC-08 module
-//    String str = Serial.readString();
-//    Serial.println(str);
-//    if (str.startsWith("AT")) {
-//      Bth.print(str);
-//      delay(150);
-//      bth_string = Bth.readString();
-//      Serial.println(bth_string);
-//      //Bth.flush();
-//    }
-//    //else if (str.equals("PRINT")) {
-//    //  print_data();
-//    //}
-//    else if (str.equals("POS_R")) {
-//      reset_offsets();
-//    } else if (str.startsWith("LED") && str.length() > 6) {
-//      set_leds(str.charAt(3) == '1', str.charAt(4) == '1', str.charAt(5) == '1', str.charAt(6) == '1', str.charAt(7) == '1');
-//    }
-//  }
-//  // if K3 button is pressed 
-//  if(key_state == true && digitalRead(7) == true)
-//  {
-//    Serial.println("BUTTON RELEASED");
-//    delay(50);
-//    if(digitalRead(7) == true)
-//      key_state = false;
-//  }
-//  if (digitalRead(7) == false && key_state == false)
-//  {
-//    Serial.println("PRINTING DEBUG INFORMATION");
-//    delay(50);
-//    
-//    // If K3 is pressed, print debug information
-//    if (digitalRead(7) == false)
-//    {
-//      key_state = true;
-//      print_data();
-//    }
-//    Serial.println("INFO PRINTED");
-//  }
-//}
+void actions() {
+  if (turn_on)
+    return;
+  // if K3 button is pressed 
+  if(key_state == true && digitalRead(7) == true)
+  {
+    Serial.println("BUTTON RELEASED");
+    delay(50);
+    if(digitalRead(7) == true)
+      key_state = false;
+  }
+  if (digitalRead(7) == false && key_state == false)
+  {
+    Serial.println("PRINTING DEBUG INFORMATION");
+    delay(50);
+    
+    // If K3 is pressed, reset position offsets
+    if (digitalRead(7) == false)
+    {
+      key_state = true;
+      reset_offsets();
+    }
+    Serial.println("INFO PRINTED");
+  }
+}
 
 void loop() {
   // send data over characteristic at BAUD rate in each update
   finger();  // update data of finger potentiometers 
-  update_mpu6050();  // update data of inclination sensor 
-
-  //actions();
-
-  
-  
-  //Bth.print("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ");
-
-  
-  //print_data();  // printing sensor data facilitates debugging 
+  update_mpu6050();  // update data of inclination sensor
+  actions(); // do other things
 }
