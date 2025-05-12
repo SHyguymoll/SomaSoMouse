@@ -75,6 +75,9 @@ struct position_d {
 
 position_d pos_data;
 
+bool finger_ready = false;
+bool position_ready = false;
+
 void set_leds(bool first, bool second, bool third, bool fourth, bool fifth) {
   digitalWrite(2, first ? LOW : HIGH);
   digitalWrite(3, second ? LOW : HIGH);
@@ -152,11 +155,9 @@ void finger() {
   static uint32_t timer_sampling;
   static uint32_t timer_init;
   static uint8_t init_step = 0;
-  static finger_d fingers;
 
-  if (timer_sampling <= millis())
+  if (timer_sampling <= millis() && !finger_ready)
   {
-    
     sampling[0] += analogRead(14);
     sampling[0] /= 2.0;
     fingers.thumb = map_and_clamp( sampling[0],min_list[0], max_list[0], L_OUT, R_OUT);
@@ -175,14 +176,15 @@ void finger() {
 
     // After calibration, it is safe to start sending data
     if (!turn_on) {
-      Bth.write((uint8_t *) &fingers, sizeof(finger_d));
+      finger_ready = true;
+      //Serial.println("FINGER READY TO SEND");
     }
     // Otherwise, send calibration message
-    else {
-      Bth.write("-----CALIBRATING----");
-    }
+    //else {
+    //  Bth.write("-----CALIBRATING----");
+    //}
     
-    timer_sampling = millis() + 10;
+    timer_sampling = millis() + 20;
 
   }
 
@@ -266,15 +268,14 @@ float radianX;
 float radianY;
 float radianZ;
 
-
 // update data of inclination sensor
 void update_mpu6050()
 {
   static uint32_t timer_u;
-  if (timer_u < millis())
+  if (timer_u < millis() && !position_ready)
   {
     // put your main code here, to run repeatedly:
-    timer_u = millis() + 20;
+    timer_u = millis() + 50;
     accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
 
     ax0 = ((float)(ax)) * 0.3 + ax0 * 0.7;  // filter the read value
@@ -305,12 +306,13 @@ void update_mpu6050()
     pos_data.radianY_last = 0.8 * (pos_data.radianY_last + radian_temp) + (-radianY) * 0.2;
 
     if (!turn_on) {
-      Bth.write((uint8_t *) &pos_data, sizeof(position_d));
+      position_ready = true;
+      //Serial.println("POSITION READY TO SEND");
     }
     // Otherwise, send calibration message
-    else {
-      Bth.write("-----CALIBRATING----");
-    }
+    //else {
+    //  Bth.write("-----CALIBRATING----");
+    //}
   }
 }
 
@@ -322,14 +324,14 @@ void actions() {
   // if K3 button is pressed 
   if(key_state == true && digitalRead(7) == true)
   {
-    Serial.println("BUTTON RELEASED");
+    //Serial.println("BUTTON RELEASED");
     delay(50);
     if(digitalRead(7) == true)
       key_state = false;
   }
   if (digitalRead(7) == false && key_state == false)
   {
-    Serial.println("PRINTING DEBUG INFORMATION");
+    //Serial.println("RESETTING OFFSET");
     delay(50);
     
     // If K3 is pressed, reset position offsets
@@ -338,7 +340,7 @@ void actions() {
       key_state = true;
       reset_offsets();
     }
-    Serial.println("INFO PRINTED");
+    //Serial.println("OFFSET RESET");
   }
 }
 
@@ -346,5 +348,13 @@ void loop() {
   // send data over characteristic at BAUD rate in each update
   finger();  // update data of finger potentiometers 
   update_mpu6050();  // update data of inclination sensor
+  if (finger_ready && position_ready) {
+    //Serial.println("SENDING DATA");
+    Bth.write((uint8_t *) &fingers, sizeof(finger_d));
+    //Bth.write((uint8_t *) &pos_data, sizeof(position_d));
+    finger_ready = false;
+    position_ready = false;
+    //Serial.println("DATA SENT");
+  }
   actions(); // do other things
 }
