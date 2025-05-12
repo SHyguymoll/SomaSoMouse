@@ -47,6 +47,14 @@ float float_map(float in, float left_in, float right_in, float left_out, float r
   return (in - left_in) * (right_out - left_out) / (right_in - left_in) + left_out;
 }
 
+float map_and_clamp(float in, float left_in, float right_in, float left_out, float right_out)
+{
+  float out = float_map(in, left_in, right_in, left_out, right_out);
+  out = out > left_out ? left_out : out;  // limit the maximum value to left_out
+  out = out < right_out ? right_out : out;   // limit the minimum value to right_out
+  return out;
+}
+
 // MPU6050 related variables
 MPU6050 accelgyro;
 int16_t ax, ay, az;
@@ -148,7 +156,7 @@ void finger() {
       else
         sampling[i - 14] += analogRead(A6);  // Read data of little finger. I2C uses A4 and A5 ports, therefore, it cannot read continuously starting from A0
       sampling[i - 14] = sampling[i - 14] / 2.0; // obtain the average value between the previous and current measurement values
-      data[i - 14] = sampling[i - 14] / MAX_STRETCH_VAL;
+      data[i - 14] = map_and_clamp( sampling[i - 14],min_list[i - 14], max_list[i - 14], 200, 100); // Map the measured value to 100-200, with 100 for making a fist and 200 for opening the robotic hand
     }
     
     fingers.thumb = data[0];
