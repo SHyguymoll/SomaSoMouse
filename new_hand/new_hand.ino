@@ -6,7 +6,6 @@
 */
 
 #include <SoftwareSerial.h> //software serial library
-#include "LobotServoController.h" //robot control signal library
 #include "MPU6050.h" //MPU6050 library
 #include "Wire.h" //I2C library
 
