@@ -21,14 +21,12 @@ float max_list[5] = {255, 255, 255, 255, 255};
 // data variables read by each finger
 float sampling[5] = {0, 0, 0, 0, 0}; 
 // finger-related servo variables
-float data[5] = {1500, 1500, 1500, 1500, 1500};
+//float data[5] = {1500, 1500, 1500, 1500, 1500};
 // potentiometer calibration flag
 bool turn_on = true;
 
 // initialize Bluetooth communication serial port
 SoftwareSerial Bth(BTH_RX, BTH_TX);
-// the control object of the robot
-// LobotServoController lsc(Bth);
 
 // float parameter mapping function
 float float_map(float in, float left_in, float right_in, float left_out, float right_out)
@@ -121,13 +119,70 @@ void reset_offsets() {
 #define MIN_STRETCH_PREPARE_PHASE 7
 #define MIN_STRETCH_GET_PHASE 8
 
+// test function for finger data
+// data_str should be a carefully formatted series of bytes, 27 bytes long
+void interpret_finger_data(byte data_str []) {
+  float current = 0.0f;
+  int shift_val = 0;
+  float thumb = 0.0f, pointer = 0.0f, middle = 0.0f, ring = 0.0f, pinky = 0.0f;
+  // fill thumb
+  for (int i = 0; i < 4; i++) {
+    shift_val = i*8;
+    current = (float)((uint32_t)current | (data_str[i + 1] << shift_val));
+  }
+  thumb = current;
+  current = 0.0f;
+
+  for (int i = 0; i < 4; i++) {
+    shift_val = i*8;
+    current = (float)((uint32_t)current | (data_str[i + 6] << shift_val));
+  }
+  pointer = current;
+  current = 0.0f;
+
+  for (int i = 0; i < 4; i++) {
+    shift_val = i*8;
+    current = (float)((uint32_t)current | (data_str[i + 11] << shift_val));
+  }
+  middle = current;
+  current = 0.0f;
+
+  for (int i = 0; i < 4; i++) {
+    shift_val = i*8;
+    current = (float)((uint32_t)current | (data_str[i + 16] << shift_val));
+  }
+  ring = current;
+  current = 0.0f;
+
+  for (int i = 0; i < 4; i++) {
+    shift_val = i*8;
+    current = (float)((uint32_t)current | (data_str[i + 21] << shift_val));
+  }
+  pinky = current;
+  current = 0.0f;
+
+  Serial.println("interpreted values:");
+  String msg = "";
+  msg.concat(thumb);
+  msg.concat(" ");
+  msg.concat(pointer);
+  msg.concat(" ");
+  msg.concat(middle);
+  msg.concat(" ");
+  msg.concat(ring);
+  msg.concat(" ");
+  msg.concat(pinky);
+  Serial.println(msg);
+}
+
 
 // read potentiometer data of each finger
 void finger() {
   static uint32_t timer_sampling;
   static uint32_t timer_init;
   static uint8_t init_step = 0;
-  static String msg = "";
+  static unsigned char msg[27] = {0};
+  static String str_classic = "";
   if (timer_sampling <= millis())
   {
     for (int i = 14; i <= 18; i++)
@@ -137,19 +192,35 @@ void finger() {
       else
         sampling[i - 14] += analogRead(A6);  // Read data of little finger. I2C uses A4 and A5 ports, therefore, it cannot read continuously starting from A0
       sampling[i - 14] = sampling[i - 14] / 2.0; // obtain the average value between the previous and current measurement values
-      data[i - 14 ] = float_map( sampling[i - 14],min_list[i - 14], max_list[i - 14], 2500, 500); // Map the measured value to 500-2500, with 500 for making a fist and 2500 for opening the robotic hand
-      data[i - 14] = data[i - 14] > 2500 ? 2500 : data[i - 14];  // limit the maximum value to 2500
-      data[i - 14] = data[i - 14] < 500 ? 500 : data[ i - 14];   // limit the minimum value to 500
+      //data[i - 14 ] = float_map( sampling[i - 14],min_list[i - 14], max_list[i - 14], 2500, 500); // Map the measured value to 500-2500, with 500 for making a fist and 2500 for opening the robotic hand
+      //data[i - 14] = data[i - 14] > 2500 ? 2500 : data[i - 14];  // limit the maximum value to 2500
+      //data[i - 14] = data[i - 14] < 500 ? 500 : data[ i - 14];   // limit the minimum value to 500
     }
     
     // After calibration, it is safe to start sending data
     if (!turn_on) {
-      msg = "F|";
+      msg[0] = '\xFF';
       for (int i = 0; i < 5; i++) {
-        msg.concat(data[i]);
-        msg.concat("|");
+        msg[i*5 + 1] = (byte)(((uint32_t)sampling[i] & 0x000000FF) >> 0);
+        msg[i*5 + 2] = (byte)(((uint32_t)sampling[i] & 0x0000FF00) >> 8);
+        msg[i*5 + 3] = (byte)(((uint32_t)sampling[i] & 0x00FF0000) >> 16);
+        msg[i*5 + 4] = (byte)(((uint32_t)sampling[i] & 0xFF000000) >> 24);
+        msg[i*5 + 5] = '\xFF';
       }
-      Bth.write(msg.c_str());
+      msg[26] = '\x00';
+      Bth.write((const uint8_t) * msg, 27);
+      Serial.println("data over line:");
+      Serial.print((const uint8_t) * msg);
+      interpret_finger_data(msg);
+
+      
+      str_classic = "";
+      for (int i = 0; i < 5; i++) {
+        str_classic.concat(sampling[i]);
+        str_classic.concat(" ");
+      }
+      Serial.println("original data:");
+      Serial.println(str_classic.c_str());
     }
     // Otherwise, send calibration message
     else {
@@ -283,83 +354,84 @@ void update_mpu6050()
 }
 
 // print data
-void print_data()
-{
-  set_leds(true, true, true, true, true);
-  for (int i = 14; i <= 18; i++)
-    {
-      Serial.print(data[i - 14]);
-      Serial.print("  ");
-      // Serial.print(float_map(min_list[i-14], max_list[i-14], 500,2500,sampling[i-14]));
-    }
-    //Serial.println();
-    Serial.print("AX: ");
-    Serial.print(ax);
-    Serial.print(" AY: ");
-    Serial.print(ay);
-    Serial.print(" AZ: ");
-    Serial.print(az);
-    Serial.print(" GX: ");
-    Serial.print(gx);
-    Serial.print(" GY: ");
-    Serial.print(gy);
-    Serial.print(" GZ: ");
-    Serial.println(gz);
-  set_leds(false, false, false, false, false);
-}
+//void print_data()
+//{
+//  set_leds(true, true, true, true, true);
+//  for (int i = 14; i <= 18; i++)
+//    {
+//      Serial.print(data[i - 14]);
+//      Serial.print("  ");
+//      // Serial.print(float_map(min_list[i-14], max_list[i-14], 500,2500,sampling[i-14]));
+//    }
+//    //Serial.println();
+//    Serial.print("AX: ");
+//    Serial.print(ax);
+//    Serial.print(" AY: ");
+//    Serial.print(ay);
+//    Serial.print(" AZ: ");
+//    Serial.print(az);
+//    Serial.print(" GX: ");
+//    Serial.print(gx);
+//    Serial.print(" GY: ");
+//    Serial.print(gy);
+//    Serial.print(" GZ: ");
+//    Serial.println(gz);
+//  set_leds(false, false, false, false, false);
+//}
 
 bool key_state = false;
 
-void actions() {
-  if (turn_on)
-    return;
-  if (Serial.available()) { // Update HC-08 module
-    String str = Serial.readString();
-    Serial.println(str);
-    if (str.startsWith("AT")) {
-      Bth.print(str);
-      delay(150);
-      bth_string = Bth.readString();
-      Serial.println(bth_string);
-      //Bth.flush();
-    }
-    else if (str.equals("PRINT")) {
-      print_data();
-    } else if (str.equals("POS_R")) {
-      reset_offsets();
-    } else if (str.startsWith("LED") && str.length() > 6) {
-      set_leds(str.charAt(3) == '1', str.charAt(4) == '1', str.charAt(5) == '1', str.charAt(6) == '1', str.charAt(7) == '1');
-    }
-  }
-  // if K3 button is pressed 
-  if(key_state == true && digitalRead(7) == true)
-  {
-    Serial.println("BUTTON RELEASED");
-    delay(50);
-    if(digitalRead(7) == true)
-      key_state = false;
-  }
-  if (digitalRead(7) == false && key_state == false)
-  {
-    Serial.println("PRINTING DEBUG INFORMATION");
-    delay(50);
-    
-    // If K3 is pressed, print debug information
-    if (digitalRead(7) == false)
-    {
-      key_state = true;
-      print_data();
-    }
-    Serial.println("INFO PRINTED");
-  }
-}
+//void actions() {
+//  if (turn_on)
+//    return;
+//  if (Serial.available()) { // Update HC-08 module
+//    String str = Serial.readString();
+//    Serial.println(str);
+//    if (str.startsWith("AT")) {
+//      Bth.print(str);
+//      delay(150);
+//      bth_string = Bth.readString();
+//      Serial.println(bth_string);
+//      //Bth.flush();
+//    }
+//    //else if (str.equals("PRINT")) {
+//    //  print_data();
+//    //}
+//    else if (str.equals("POS_R")) {
+//      reset_offsets();
+//    } else if (str.startsWith("LED") && str.length() > 6) {
+//      set_leds(str.charAt(3) == '1', str.charAt(4) == '1', str.charAt(5) == '1', str.charAt(6) == '1', str.charAt(7) == '1');
+//    }
+//  }
+//  // if K3 button is pressed 
+//  if(key_state == true && digitalRead(7) == true)
+//  {
+//    Serial.println("BUTTON RELEASED");
+//    delay(50);
+//    if(digitalRead(7) == true)
+//      key_state = false;
+//  }
+//  if (digitalRead(7) == false && key_state == false)
+//  {
+//    Serial.println("PRINTING DEBUG INFORMATION");
+//    delay(50);
+//    
+//    // If K3 is pressed, print debug information
+//    if (digitalRead(7) == false)
+//    {
+//      key_state = true;
+//      print_data();
+//    }
+//    Serial.println("INFO PRINTED");
+//  }
+//}
 
 void loop() {
   // send data over characteristic at BAUD rate in each update
   finger();  // update data of finger potentiometers 
   update_mpu6050();  // update data of inclination sensor 
 
-  actions();
+  //actions();
 
   
   
