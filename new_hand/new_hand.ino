@@ -26,16 +26,50 @@ bool turn_on = true;
 // initialize Bluetooth communication serial port
 SoftwareSerial Bth(BTH_RX, BTH_TX);
 
+// fingers part 1, handles thumb, pointer, middle, and ring fingers
+// 2 (header) + 4 (thumb) + 4 (pointer) + 4 (middle) + 4 (ring) + 2 (footer for byte alignment)
 struct finger_d {
   uint8_t header[2] = {0xF1, 0xF1};
   float thumb = 0.0f;
   float pointer = 0.0f;
   float middle = 0.0f;
   float ring = 0.0f;
-  float pinky = 0.0f;
+  uint8_t footer[2] = {0xFF, 0xFF};
 };
 
 finger_d fingers;
+
+// fingers part 2 and acceleration, handles pinky and acceleration data
+// 2 (header) + 4 (pinky) + 4 (ax) + 4 (ay) + 4 (az) + 2 (byte alignment footer)
+struct pinky_accel_d {
+  uint8_t header[2] = {0xF2, 0xF2};
+  float pinky = 0.0f;
+  float ax1, ay1, az1;
+  uint8_t footer[2] = {0xFF, 0xFF};
+};
+
+pinky_accel_d pinky_accel;
+
+// rotation struct, also x inclination
+// 2 (header) + 4 (gx1) + 4 (gy1) + 4 (gz1) + 4 (radianX_last) + 2 (byte alignment footer)
+struct rotation_d {
+  uint8_t header[2] = {0xF3, 0xF3};
+  float gx1, gy1, gz1;
+  float radianX_last; // the final obtained X-axis inclination angle
+  uint8_t footer[2] = {0xFF, 0xFF};
+};
+
+rotation_d rot_data;
+
+// extra data that I wanted to share that didn't really fit anywhere else, right now just the y inclination
+// 2 (header) + 4 (radianY_last) + 14 (filler, byte alignment footer)
+struct extra_d {
+  uint8_t header[2] = {0xF4, 0xF4};
+  float radianY_last; // the final obtained Y-axis inclination angle
+  uint8_t footer[14] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+};
+
+extra_d misc_data;
 
 // float parameter mapping function
 float float_map(float in, float left_in, float right_in, float left_out, float right_out)
@@ -64,16 +98,7 @@ float gx0, gy0, gz0;
 // accelerometer calibration variable
 int ax_offset, ay_offset, az_offset, gx_offset, gy_offset, gz_offset;
 
-// position struct to be sent over bluetooth
-struct position_d {
-  uint8_t header[2] = {0xF0, 0xF0};
-  float ax1, ay1, az1;
-  float gx1, gy1, gz1;
-  float radianX_last; // the final obtained X-axis inclination angle
-  float radianY_last; // the final obtained Y-axis inclination angle
-};
 
-position_d pos_data;
 
 bool finger_ready = false;
 bool position_ready = false;
@@ -172,7 +197,7 @@ void finger() {
     fingers.ring = map_and_clamp( sampling[3],min_list[3], max_list[3], L_OUT, R_OUT);
     sampling[4] += analogRead(A6); // Read data of little finger. I2C uses A4 and A5 ports, therefore, it cannot read continuously starting from A0
     sampling[4] /= 2.0;
-    fingers.pinky = map_and_clamp( sampling[4],min_list[4], max_list[4], L_OUT, R_OUT);
+    pinky_accel.pinky = map_and_clamp( sampling[4],min_list[4], max_list[4], L_OUT, R_OUT);
 
     // After calibration, it is safe to start sending data
     if (!turn_on) {
@@ -281,29 +306,29 @@ void update_mpu6050()
     ax0 = ((float)(ax)) * 0.3 + ax0 * 0.7;  // filter the read value
     ay0 = ((float)(ay)) * 0.3 + ay0 * 0.7;
     az0 = ((float)(az)) * 0.3 + az0 * 0.7;
-    pos_data.ax1 = (ax0 - ax_offset) /  8192.0;  // calibrate and convert to the multiples of the gravity acceleration
-    pos_data.ay1 = (ay0 - ay_offset) /  8192.0;
-    pos_data.az1 = (az0 - az_offset) /  8192.0;
+    pinky_accel.ax1 = (ax0 - ax_offset) /  8192.0;  // calibrate and convert to the multiples of the gravity acceleration
+    pinky_accel.ay1 = (ay0 - ay_offset) /  8192.0;
+    pinky_accel.az1 = (az0 - az_offset) /  8192.0;
 
     gx0 = ((float)(gx)) * 0.3 + gx0 * 0.7;  // filter the read value of angular velocity
     gy0 = ((float)(gy)) * 0.3 + gy0 * 0.7;
     gz0 = ((float)(gz)) * 0.3 + gz0 * 0.7;
-    pos_data.gx1 = (gx0 - gx_offset);  // calibrate angular velocity
-    pos_data.gy1 = (gy0 - gy_offset);
-    pos_data.gz1 = (gz0 - gz_offset);
+    rot_data.gx1 = (gx0 - gx_offset);  // calibrate angular velocity
+    rot_data.gy1 = (gy0 - gy_offset);
+    rot_data.gz1 = (gz0 - gz_offset);
 
 
     // complementary calculation for x-axis inclination angle
-    radianX = atan2(pos_data.ay1, pos_data.az1);
+    radianX = atan2(pinky_accel.ay1, pinky_accel.az1);
     radianX = radianX * 180.0 / 3.1415926;
-    float radian_temp = (float)(pos_data.gx1) / 16.4 * 0.02;
-    pos_data.radianX_last = 0.8 * (pos_data.radianX_last + radian_temp) + (-radianX) * 0.2;
+    float radian_temp = (float)(rot_data.gx1) / 16.4 * 0.02;
+    rot_data.radianX_last = 0.8 * (rot_data.radianX_last + radian_temp) + (-radianX) * 0.2;
 
     // complementary calculation for y-axis inclination angle
-    radianY = atan2(pos_data.ax1, pos_data.az1);
+    radianY = atan2(pinky_accel.ax1, pinky_accel.az1);
     radianY = radianY * 180.0 / 3.1415926;
-    radian_temp = (float)(pos_data.gy1) / 16.4 * 0.01;
-    pos_data.radianY_last = 0.8 * (pos_data.radianY_last + radian_temp) + (-radianY) * 0.2;
+    radian_temp = (float)(rot_data.gy1) / 16.4 * 0.01;
+    misc_data.radianY_last = 0.8 * (misc_data.radianY_last + radian_temp) + (-radianY) * 0.2;
 
     if (!turn_on) {
       position_ready = true;
@@ -351,7 +376,13 @@ void loop() {
   if (finger_ready && position_ready) {
     //Serial.println("SENDING DATA");
     Bth.write((uint8_t *) &fingers, sizeof(finger_d));
-    //Bth.write((uint8_t *) &pos_data, sizeof(position_d));
+    delay(20);
+    Bth.write((uint8_t *) &pinky_accel, sizeof(pinky_accel_d));
+    delay(20);
+    Bth.write((uint8_t *) &rot_data, sizeof(rotation_d));
+    delay(20);
+    Bth.write((uint8_t *) &misc_data, sizeof(extra_d));
+    delay(20);
     finger_ready = false;
     position_ready = false;
     //Serial.println("DATA SENT");

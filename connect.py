@@ -23,46 +23,28 @@ async def disconnect_client():
    await client.disconnect()
    print("DISCONNECTED!")
 
-FINGER_HEADER = bytearray(b'\xF1\xF1')
-FINGER_STRUCT_LEN = 22
-POSITION_HEADER = bytearray(b'\xF0\xF0')
-POSITION_STRUCT_LEN = 34
-finger_seen = 0
-position_seen = 0
-
-print(len(FINGER_HEADER))
-buffer = bytearray()
+FINGER1_HEADER = bytearray(b'\xF1\xF1')
+FINGER2_HEADER = bytearray(b'\xF2\xF2')
+ROTATION_HEADER = bytearray(b'\xF3\xF3')
+EXTRA_HEADER = bytearray(b'\xF4\xF4')
 
 import struct
 
 def callback(sender: BleakGATTCharacteristic, data: bytearray):
-    print(f"{len(data)} {str(data)}")
-    return
-
-    global finger_seen, position_seen
-    for b in data:
-        buffer.append(b)
-        if finger_seen > 0:
-            finger_seen -= 1
-            if finger_seen == 0:
-                thumb, pointer, middle, ring, pinky = struct.unpack_from("5f", buffer)
-                print(f"thumb = {thumb}, pointer = {pointer}, middle = {middle}, ring = {ring}, pinky = {pinky}")
-                buffer.clear()
-        if position_seen > 0:
-            position_seen -= 1
-            if position_seen == 0:
-                ax1, ay1, az1, gx1, gy1, gz1, radX, radY = struct.unpack_from("8f", buffer)
-                print(f"acceleration = ({ax1}, {ay1}, {az1}), angular velocity = ({gx1}, {gy1}, {gz1}), inclination = ({radX}, {radY})")
-                buffer.clear()
-        elif len(buffer) == 2:
-            if buffer == FINGER_HEADER:
-                print("finger found")
-                finger_seen = FINGER_STRUCT_LEN - len(FINGER_HEADER)
-            elif buffer == POSITION_HEADER:
-                print("position found")
-                position_seen = POSITION_STRUCT_LEN - len(POSITION_HEADER)
-            print("neither found, worrying")
-            buffer.clear()
+    if data.startswith(FINGER1_HEADER):
+        thumb, pointer, middle, ring = struct.unpack_from("4f", data, 2)
+        print(f"thumb = {thumb}, pointer = {pointer}, middle = {middle}, ring = {ring}")
+    elif data.startswith(FINGER2_HEADER):
+        pinky, ax1, ay1, az1 = struct.unpack_from("4f", data, 2)
+        print(f"pinky = {pinky}, acceleration = ({ax1}, {ay1}, {az1})")
+    elif data.startswith(ROTATION_HEADER):
+        gx1, gy1, gz1, radX = struct.unpack_from("4f", data, 2)
+        print(f"angular velocity = ({gx1}, {gy1}, {gz1}), inclination x = {radX}")
+    elif data.startswith(EXTRA_HEADER):
+        radY = struct.unpack_from("f", data, 2)
+        print(f"inclination y = {radY}")
+    else:
+        print("!!!!malformed packet!!!!")
 
 async def test():
     print("CONNECTING!")
