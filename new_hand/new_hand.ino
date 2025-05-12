@@ -21,12 +21,25 @@ float max_list[5] = {255, 255, 255, 255, 255};
 // data variables read by each finger
 float sampling[5] = {0, 0, 0, 0, 0}; 
 // finger-related servo variables
-//float data[5] = {1500, 1500, 1500, 1500, 1500};
+float data[5] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
 // potentiometer calibration flag
 bool turn_on = true;
 
 // initialize Bluetooth communication serial port
 SoftwareSerial Bth(BTH_RX, BTH_TX);
+
+struct finger_d {
+  uint8_t header = 0xFF;
+  float thumb = 0.0f;
+  float pointer = 0.0f;
+  float middle = 0.0f;
+  float ring = 0.0f;
+  float pinky = 0.0f;
+  uint8_t footer = 0xFF;
+};
+
+#define MIN_STRETCH_VAL 0.0f
+#define MAX_STRETCH_VAL 255.0f
 
 // float parameter mapping function
 float float_map(float in, float left_in, float right_in, float left_out, float right_out)
@@ -119,70 +132,13 @@ void reset_offsets() {
 #define MIN_STRETCH_PREPARE_PHASE 7
 #define MIN_STRETCH_GET_PHASE 8
 
-// test function for finger data
-// data_str should be a carefully formatted series of bytes, 27 bytes long
-void interpret_finger_data(byte data_str []) {
-  float current = 0.0f;
-  int shift_val = 0;
-  float thumb = 0.0f, pointer = 0.0f, middle = 0.0f, ring = 0.0f, pinky = 0.0f;
-  // fill thumb
-  for (int i = 0; i < 4; i++) {
-    shift_val = i*8;
-    current = (float)((uint32_t)current | (data_str[i + 1] << shift_val));
-  }
-  thumb = current;
-  current = 0.0f;
-
-  for (int i = 0; i < 4; i++) {
-    shift_val = i*8;
-    current = (float)((uint32_t)current | (data_str[i + 6] << shift_val));
-  }
-  pointer = current;
-  current = 0.0f;
-
-  for (int i = 0; i < 4; i++) {
-    shift_val = i*8;
-    current = (float)((uint32_t)current | (data_str[i + 11] << shift_val));
-  }
-  middle = current;
-  current = 0.0f;
-
-  for (int i = 0; i < 4; i++) {
-    shift_val = i*8;
-    current = (float)((uint32_t)current | (data_str[i + 16] << shift_val));
-  }
-  ring = current;
-  current = 0.0f;
-
-  for (int i = 0; i < 4; i++) {
-    shift_val = i*8;
-    current = (float)((uint32_t)current | (data_str[i + 21] << shift_val));
-  }
-  pinky = current;
-  current = 0.0f;
-
-  Serial.println("interpreted values:");
-  String msg = "";
-  msg.concat(thumb);
-  msg.concat(" ");
-  msg.concat(pointer);
-  msg.concat(" ");
-  msg.concat(middle);
-  msg.concat(" ");
-  msg.concat(ring);
-  msg.concat(" ");
-  msg.concat(pinky);
-  Serial.println(msg);
-}
-
-
 // read potentiometer data of each finger
 void finger() {
   static uint32_t timer_sampling;
   static uint32_t timer_init;
   static uint8_t init_step = 0;
-  static unsigned char msg[27] = {0};
-  static String str_classic = "";
+  static finger_d fingers;
+  
   if (timer_sampling <= millis())
   {
     for (int i = 14; i <= 18; i++)
@@ -192,39 +148,36 @@ void finger() {
       else
         sampling[i - 14] += analogRead(A6);  // Read data of little finger. I2C uses A4 and A5 ports, therefore, it cannot read continuously starting from A0
       sampling[i - 14] = sampling[i - 14] / 2.0; // obtain the average value between the previous and current measurement values
-      //data[i - 14 ] = float_map( sampling[i - 14],min_list[i - 14], max_list[i - 14], 2500, 500); // Map the measured value to 500-2500, with 500 for making a fist and 2500 for opening the robotic hand
-      //data[i - 14] = data[i - 14] > 2500 ? 2500 : data[i - 14];  // limit the maximum value to 2500
-      //data[i - 14] = data[i - 14] < 500 ? 500 : data[ i - 14];   // limit the minimum value to 500
+      data[i - 14] = sampling[i - 14] / MAX_STRETCH_VAL;
     }
+    
+    fingers.thumb = data[0];
+    fingers.pointer = data[1];
+    fingers.middle = data[2];
+    fingers.ring = data[3];
+    fingers.pinky = data[4];
+
     
     // After calibration, it is safe to start sending data
     if (!turn_on) {
-      msg[0] = '\xFF';
-      for (int i = 0; i < 5; i++) {
-        msg[i*5 + 1] = (byte)(((uint32_t)sampling[i] & 0x000000FF) >> 0);
-        msg[i*5 + 2] = (byte)(((uint32_t)sampling[i] & 0x0000FF00) >> 8);
-        msg[i*5 + 3] = (byte)(((uint32_t)sampling[i] & 0x00FF0000) >> 16);
-        msg[i*5 + 4] = (byte)(((uint32_t)sampling[i] & 0xFF000000) >> 24);
-        msg[i*5 + 5] = '\xFF';
-      }
-      msg[26] = '\x00';
-      Bth.write((const uint8_t) * msg, 27);
-      Serial.println("data over line:");
-      Serial.print((const uint8_t) * msg);
-      interpret_finger_data(msg);
-
-      
-      str_classic = "";
-      for (int i = 0; i < 5; i++) {
-        str_classic.concat(sampling[i]);
-        str_classic.concat(" ");
-      }
-      Serial.println("original data:");
-      Serial.println(str_classic.c_str());
+      Bth.write((uint8_t *) &fingers, sizeof(finger_d));
+      //Serial.println("data over line:");
+      //Serial.write((uint8_t *) &fingers, sizeof(finger_d));
+      //Serial.println("\nactual data:");
+      //Serial.print(fingers.thumb, 6);
+      //Serial.print(" ");
+      //Serial.print(fingers.pointer, 6);
+      //Serial.print(" ");
+      //Serial.print(fingers.middle, 6);
+      //Serial.print(" ");
+      //Serial.print(fingers.ring, 6);
+      //Serial.print(" ");
+      //Serial.print(fingers.pinky, 6);
+      //Serial.println();
     }
     // Otherwise, send calibration message
     else {
-      Bth.write("CALIBRATING---------");
+      Bth.write("-----CALIBRATING----");
     }
     
     timer_sampling = millis() + 10;
