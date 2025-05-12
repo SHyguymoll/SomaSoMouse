@@ -370,7 +370,7 @@ void actions() {
 }
 
 void loop() {
-  // send data over characteristic at BAUD rate in each update
+  // prepare data to be sent in functions
   finger();  // update data of finger potentiometers 
   update_mpu6050();  // update data of inclination sensor
   if (finger_ready && position_ready) {
