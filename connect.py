@@ -1,50 +1,42 @@
 import asyncio
-from enum import Enum
 from bleak import BleakClient, BleakGATTCharacteristic
+
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 address = "f8:2e:0c:a6:53:bf"
 MODEL_NBR_UUID = "FFE1"
 
-class ConnectState(Enum):
-    NO_CONNECT = 0
-    CONNECT_INPROG = 1
-    CLIENT_CONNECTED = 2
-    DISCONNECT_INPROG = 3
-    EXIT = 4
+client = BleakClient(address)
 
-client : BleakClient = None
-state : ConnectState = ConnectState.NO_CONNECT
 
-async def main(addr):
-    global state, client
-    print("INITIALIZING!")
-    while True:
-        match state:
-            case ConnectState.CONNECT_INPROG:
-                print("CONNECTING!")
-                client = BleakClient(addr)
-                print("Available Services: {0}".format(str(client.services.get_service("FFE0"))))
-                await client.start_notify(MODEL_NBR_UUID, callback=callback)
-                state = ConnectState.CLIENT_CONNECTED
-                print("CONNECTED!")
-            case ConnectState.DISCONNECT_INPROG:
-                print("DISCONNECTING!")
-                await client.stop_notify(MODEL_NBR_UUID)
-                client = None
-                state = ConnectState.NO_CONNECT
-                print("DISCONNECTED!")
-            case ConnectState.EXIT:
-                print("EXITING!")
-                if client is not None:
-                    print("DISCONNECTING!")
-                    await client.stop_notify(MODEL_NBR_UUID)
-                    client = None
-                print("EXITED!")
-                break
-                
+async def try_connect():
+    await client.connect()
+
+async def begin_notif():
+    print("CONNECTING!")
+    await client.start_notify(MODEL_NBR_UUID, callback=callback)
+    print("CONNECTED!")
+
+async def disconnect_client():
+   print("DISCONNECTING!")
+   await client.disconnect()
+   print("DISCONNECTED!")
 
 def callback(sender: BleakGATTCharacteristic, data: bytearray):
-        print(f"{sender}: {data}")
+    print(f"{sender}: {str(data)}")
 
-def start():
-    asyncio.run(main(address))
+async def test():
+    print("CONNECTING!")
+    await client.connect()
+    print("CONNECTED!")
+    print("SETTING UP NOTIF STREAM")
+    await client.start_notify(MODEL_NBR_UUID, callback=callback)
+    print("OBTAINING DATA")
+    print("DISCONNECTING!")
+    await client.disconnect()
+    print("DISCONNECTED!")
+
+if __name__ == "__main__":
+    print("TESTING CONNECTIVITY")
+    asyncio.run(test())
