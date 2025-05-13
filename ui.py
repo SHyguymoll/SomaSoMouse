@@ -50,7 +50,7 @@ class ExampleApp(App):
         self.running = False
 
 
-    def callback(self, sender, data):
+    def callback(self, sender: bleak.BleakGATTCharacteristic, data: bytearray):
         if data.startswith(FINGER1_HEADER):
             thumb, pointer, middle, ring = struct.unpack_from("4f", data, 2)
             self.line(f"thumb = {thumb}, pointer = {pointer}, middle = {middle}, ring = {ring}")
