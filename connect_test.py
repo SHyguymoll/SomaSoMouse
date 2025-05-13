@@ -9,20 +9,6 @@ MODEL_NBR_UUID = "FFE1"
 
 client = BleakClient(address)
 
-
-async def try_connect():
-    await client.connect()
-
-async def begin_notif():
-    print("CONNECTING!")
-    await client.start_notify(MODEL_NBR_UUID, callback=callback)
-    print("CONNECTED!")
-
-async def disconnect_client():
-   print("DISCONNECTING!")
-   await client.disconnect()
-   print("DISCONNECTED!")
-
 FINGER1_HEADER = bytearray(b'\xF1\xF1')
 FINGER2_HEADER = bytearray(b'\xF2\xF2')
 ROTATION_HEADER = bytearray(b'\xF3\xF3')
