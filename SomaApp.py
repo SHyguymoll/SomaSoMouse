@@ -1,11 +1,14 @@
 
 from kivy.app import App
 
-# from kivy.core.window import Window
+from kivy.core.window import Window
+Window.size = (640, 480)
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.dropdown import DropDown
 from kivy.uix.button import Button
+from kivy.uix.anchorlayout import AnchorLayout
 import objloader
 
 
@@ -43,6 +46,24 @@ class PositionRotationState():
         self.rot = { "x": 0.0, "y": 0.0, "z": 0.0, }
         self.inclin = { "x": 0.0, "y": 0.0, }
 
+class LabelWithDropdown():
+    def __init__(self, l_text : str, drp_itms : list[str], drp_label : str):
+        self.parent = AnchorLayout(anchor_x='center', anchor_y='top')
+        self.box = BoxLayout(spacing=5)
+        self.label = Label(text=l_text, font_size="10sp")
+        self.drdown = DropDown()
+        for drp_itm in drp_itms:
+            btn = Button(text=drp_itm, size_hint=(1, None), height=24)
+            btn.bind(on_release=lambda btn: self.drdown.select(btn.text))
+            self.drdown.add_widget(btn)
+        self.drdownbutton = Button(text=drp_label, size_hint = (1, None))
+        self.drdown.bind(on_select=lambda instance, x: setattr(self.drdownbutton, 'text', x))
+        self.drdown.dismiss()
+        self.box.add_widget(self.label)
+        self.box.add_widget(self.drdown)
+        self.box.add_widget(self.drdownbutton)
+        self.parent.add_widget(self.box)
+
 class ExampleApp(App):
     def __init__(self):
         super().__init__()
@@ -55,9 +76,13 @@ class ExampleApp(App):
     def build(self):
         self.layout_main = BoxLayout()
         self.button_placeholder = Button(text="placeholder", size_hint = (.7, 1))
+        self.layout_side = BoxLayout(orientation="vertical", size_hint = (.3, 1))
         self.layout_main.add_widget(self.button_placeholder)
-        self.scrollview = ScrollView(do_scroll_x=False, scroll_type=["bars", "content"], size_hint = (.3, 1))
-        self.layout_main.add_widget(self.scrollview)
+        self.layout_main.add_widget(self.layout_side)
+        self.scrn_dropdown = LabelWithDropdown("Current Screen", ["Screen A", "Screen B", "Screen C"], "Screen A")
+        self.layout_side.add_widget(self.scrn_dropdown.parent)
+        self.scrollview = ScrollView(do_scroll_x=False, scroll_type=["bars", "content"], size_hint = (1, .25))
+        self.layout_side.add_widget(self.scrollview)
         self.label = Label(font_size="10sp")
         self.scrollview.add_widget(self.label)
         return self.layout_main
