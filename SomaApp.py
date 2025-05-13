@@ -9,6 +9,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.dropdown import DropDown
 from kivy.uix.button import Button
 from kivy.uix.anchorlayout import AnchorLayout
+from kivy.uix.togglebutton import ToggleButton
 import objloader
 
 
@@ -49,7 +50,8 @@ class PositionRotationState():
 class LabelWithDropdown():
     def __init__(self, l_text : str, drp_itms : list[str], drp_label : str):
         self.parent = AnchorLayout(anchor_x='center', anchor_y='top')
-        self.box = BoxLayout(spacing=5)
+        self.box_h = BoxLayout(spacing=5)
+        self.box_v = BoxLayout(orientation="vertical")
         self.label = Label(text=l_text, font_size="10sp")
         self.drdown = DropDown()
         for drp_itm in drp_itms:
@@ -58,11 +60,11 @@ class LabelWithDropdown():
             self.drdown.add_widget(btn)
         self.drdownbutton = Button(text=drp_label, size_hint = (1, None))
         self.drdown.bind(on_select=lambda instance, x: setattr(self.drdownbutton, 'text', x))
-        self.drdown.dismiss()
-        self.box.add_widget(self.label)
-        self.box.add_widget(self.drdown)
-        self.box.add_widget(self.drdownbutton)
-        self.parent.add_widget(self.box)
+        self.box_h.add_widget(self.label)
+        self.box_v.add_widget(self.drdownbutton)
+        self.box_v.add_widget(self.drdown)
+        self.box_h.add_widget(self.box_v)
+        self.parent.add_widget(self.box_h)
 
 class ExampleApp(App):
     def __init__(self):
@@ -74,13 +76,23 @@ class ExampleApp(App):
         self.transf = PositionRotationState()
 
     def build(self):
+        #outer box
         self.layout_main = BoxLayout()
+        # left side will show render of hand for visualization
         self.button_placeholder = Button(text="placeholder", size_hint = (.7, 1))
+        # right side will be configuration options
         self.layout_side = BoxLayout(orientation="vertical", size_hint = (.3, 1))
         self.layout_main.add_widget(self.button_placeholder)
         self.layout_main.add_widget(self.layout_side)
+        # dropdown to control current screen mouse is on (impl tbd)
         self.scrn_dropdown = LabelWithDropdown("Current Screen", ["Screen A", "Screen B", "Screen C"], "Screen A")
         self.layout_side.add_widget(self.scrn_dropdown.parent)
+        # radio buttons for handling the exit button
+        self.min_on_exit = ToggleButton(text="Minimize on Exit", group="on exit", state="down")
+        self.close_on_exit = ToggleButton(text="Close on Exit", group="on exit")
+        self.layout_side.add_widget(self.min_on_exit)
+        self.layout_side.add_widget(self.close_on_exit)
+        # debug scroll for debugging (who could've guessed)
         self.scrollview = ScrollView(do_scroll_x=False, scroll_type=["bars", "content"], size_hint = (1, .25))
         self.layout_side.add_widget(self.scrollview)
         self.label = Label(font_size="10sp")
