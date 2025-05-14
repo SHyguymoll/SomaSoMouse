@@ -6,7 +6,7 @@ Window.size = (640, 480)
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.dropdown import DropDown
+from kivy.uix.spinner import Spinner
 from kivy.uix.button import Button
 from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.togglebutton import ToggleButton
@@ -49,19 +49,19 @@ class PositionRotationState():
 
 class LabelWithDropdown():
     def __init__(self, l_text : str, drp_itms : list[str], drp_label : str):
-        self.parent = AnchorLayout(anchor_x='center', anchor_y='top')
+        self.parent = AnchorLayout(anchor_x='center', anchor_y='top', size_hint = (1, 0.125))
         self.box_h = BoxLayout(spacing=5)
         self.box_v = BoxLayout(orientation="vertical")
         self.label = Label(text=l_text, font_size="10sp")
-        self.drdown = DropDown()
-        for drp_itm in drp_itms:
-            btn = Button(text=drp_itm, size_hint=(1, None), height=24)
-            btn.bind(on_release=lambda btn: self.drdown.select(btn.text))
-            self.drdown.add_widget(btn)
-        self.drdownbutton = Button(text=drp_label, size_hint = (1, None))
-        self.drdown.bind(on_select=lambda instance, x: setattr(self.drdownbutton, 'text', x))
+        self.drdown = Spinner(
+            # default value shown
+            text=drp_label,
+            # available values
+            values=(drp_itms),
+            size_hint = (1, 0.25),
+        )
+        self.drdown.bind(on_select=lambda instance, x: setattr(self.drdown, 'text', x))
         self.box_h.add_widget(self.label)
-        self.box_v.add_widget(self.drdownbutton)
         self.box_v.add_widget(self.drdown)
         self.box_h.add_widget(self.box_v)
         self.parent.add_widget(self.box_h)
@@ -79,19 +79,22 @@ class ExampleApp(App):
         #outer box
         self.layout_main = BoxLayout()
         # left side will show render of hand for visualization
-        self.button_placeholder = Button(text="placeholder", size_hint = (.7, 1))
+        self.placeholder = AnchorLayout(anchor_x='center', anchor_y='center', size_hint = (.7, 1))
         # right side will be configuration options
-        self.layout_side = BoxLayout(orientation="vertical", size_hint = (.3, 1))
-        self.layout_main.add_widget(self.button_placeholder)
+        self.layout_side = BoxLayout(orientation="vertical", size_hint = (.3, 1), spacing=20, padding=10)
+        self.layout_main.add_widget(self.placeholder)
         self.layout_main.add_widget(self.layout_side)
         # dropdown to control current screen mouse is on (impl tbd)
-        self.scrn_dropdown = LabelWithDropdown("Current Screen", ["Screen A", "Screen B", "Screen C"], "Screen A")
+        self.scrn_dropdown = LabelWithDropdown("Current Screen", ['Screen A', 'Screen B', 'Screen C'], 'Screen A')
         self.layout_side.add_widget(self.scrn_dropdown.parent)
         # radio buttons for handling the exit button
-        self.min_on_exit = ToggleButton(text="Minimize on Exit", group="on exit", state="down")
-        self.close_on_exit = ToggleButton(text="Close on Exit", group="on exit")
+        self.min_on_exit = ToggleButton(text="Minimize on Exit", group="on exit", state="down", size_hint = (1, .25))
+        self.close_on_exit = ToggleButton(text="Close on Exit", group="on exit", size_hint = (1, .25))
         self.layout_side.add_widget(self.min_on_exit)
         self.layout_side.add_widget(self.close_on_exit)
+        # button for connecting and disconnecting, changes depending on if glove is connected
+        self.connect_disconnect_button = Button(text="Connect to Glove", size_hint = (1, .5))
+        self.layout_side.add_widget(self.connect_disconnect_button)
         # debug scroll for debugging (who could've guessed)
         self.scrollview = ScrollView(do_scroll_x=False, scroll_type=["bars", "content"], size_hint = (1, .25))
         self.layout_side.add_widget(self.scrollview)
@@ -140,7 +143,7 @@ class ExampleApp(App):
         await self.client.connect()
         await self.client.start_notify("FFE1", self.callback)
 
-async def main(app):
+async def main(app : ExampleApp):
     await asyncio.gather(app.async_run("asyncio"), app.example())
     await app.client.disconnect()
 
