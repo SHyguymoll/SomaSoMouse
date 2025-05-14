@@ -60,7 +60,7 @@ class Hand(FloatLayout):
         super().__init__(**kwargs)
         with self.canvas:
             Color(1., 1., 1.)
-            self.pal = Rectangle(size=(40, 30), pos=(self.width / 2.0 ,self.height / 2.0))
+            self.pal = Rectangle(size=(40, 30), pos=(Window.size[0] / 2., Window.size[1] / 2.))
             self.thu = Rectangle(size=(10, 20), pos=(self.pal.pos[0] - 20, self.pal.pos[1] + 0))
             self.poi = Rectangle(size=(10, 20), pos=(self.pal.pos[0] - 10, self.pal.pos[1] + 35))
             self.mid = Rectangle(size=(10, 20), pos=(self.pal.pos[0] + 5, self.pal.pos[1] + 35))
