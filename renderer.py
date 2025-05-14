@@ -36,7 +36,6 @@ class Renderer(Widget):
             self.setup_scene()
             PopMatrix()
             self.cb = Callback(self.reset_gl_context)
-        Clock.schedule_interval(self.update_glsl, 1 / 60.)
 
     def setup_gl_context(self, *args):
         glEnable(GL_DEPTH_TEST)
@@ -70,7 +69,9 @@ class Renderer(Widget):
 
 class RendererApp(App):
     def build(self):
-        return Renderer()
+        render = Renderer()
+        Clock.schedule_interval(render.update_glsl, 1 / 60.)
+        return render
 
 
 if __name__ == "__main__":
