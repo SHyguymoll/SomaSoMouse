@@ -10,7 +10,7 @@ from kivy.uix.spinner import Spinner
 from kivy.uix.button import Button
 from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.togglebutton import ToggleButton
-import objloader
+import renderer
 
 
 # bind bleak's python logger into kivy's logger before importing python module using logging
@@ -79,7 +79,7 @@ class ExampleApp(App):
         #outer box
         self.layout_main = BoxLayout()
         # left side will show render of hand for visualization
-        self.placeholder = AnchorLayout(anchor_x='center', anchor_y='center', size_hint = (.7, 1))
+        self.placeholder = renderer.Renderer(model_obj='Hand.obj')
         # right side will be configuration options
         self.layout_side = BoxLayout(orientation="vertical", size_hint = (.3, 1), spacing=20, padding=10)
         self.layout_main.add_widget(self.placeholder)
