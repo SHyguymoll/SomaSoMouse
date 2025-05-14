@@ -53,28 +53,39 @@ class PositionRotationState():
         self.rot = { "x": 0.0, "y": 0.0, "z": 0.0, }
         self.inclin = { "x": 0.0, "y": 0.0, }
 
-class Hand(RelativeLayout):
+class Hand(FloatLayout):
+    CLOSED = 100.0
+    OPEN = 200.0
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         with self.canvas:
             Color(1., 1., 1.)
-            #self.palm = Rectangle(size=(30, 20), pos=(0,0))
-            self.pal = Rectangle(size=(40, 30), pos=(100,100))
-            self.thu = Rectangle(size=(10, 20), pos=(80, 100))
-            self.poi = Rectangle(size=(10, 20), pos=(90, 135))
-            self.mid = Rectangle(size=(10, 20), pos=(105, 135))
-            self.rin = Rectangle(size=(10, 20), pos=(120, 135))
-            self.pin = Rectangle(size=(10, 20), pos=(135, 135))
-        #Clock.schedule_interval(self.move_hand, 1 / 60.)
+            self.pal = Rectangle(size=(40, 30), pos=(self.width / 2.0 ,self.height / 2.0))
+            self.thu = Rectangle(size=(10, 20), pos=(self.pal.pos[0] - 20, self.pal.pos[1] + 0))
+            self.poi = Rectangle(size=(10, 20), pos=(self.pal.pos[0] - 10, self.pal.pos[1] + 35))
+            self.mid = Rectangle(size=(10, 20), pos=(self.pal.pos[0] + 5, self.pal.pos[1] + 35))
+            self.rin = Rectangle(size=(10, 20), pos=(self.pal.pos[0] + 20, self.pal.pos[1] + 35))
+            self.pin = Rectangle(size=(10, 20), pos=(self.pal.pos[0] + 35, self.pal.pos[1] + 35))
         
     
-    #def move_hand(self, dt):
-    #    self.pal.pos[1] += dt * 10
-    #    self.thu.pos[1] += dt * 10
-    #    self.poi.pos[1] += dt * 10
-    #    self.mid.pos[1] += dt * 10
-    #    self.rin.pos[1] += dt * 10
-    #    self.pin.pos[1] += dt * 10
+    def position_hand(self, new_pos : tuple[float, float], thu_stretch : float, poi_stretch : float, mid_stretch : float, rin_stretch : float, pin_stretch : float):
+        if new_pos is not None:
+            self.pal.pos = (new_pos[0] * 1000, new_pos[1] * 1000)
+            self.thu.pos = (self.pal.pos[0] - 20, self.pal.pos[1] + 0)
+            self.poi.pos = (self.pal.pos[0] - 10, self.pal.pos[1] + 35)
+            self.mid.pos = (self.pal.pos[0] + 5, self.pal.pos[1] + 35)
+            self.rin.pos = (self.pal.pos[0] + 20, self.pal.pos[1] + 35)
+            self.pin.pos = (self.pal.pos[0] + 35, self.pal.pos[1] + 35)
+        if thu_stretch is not None:
+            self.thu.size = (10, (thu_stretch * 10.) / self.CLOSED)
+        if poi_stretch is not None:
+            self.poi.size = (10, (poi_stretch * 10.) / self.CLOSED)
+        if mid_stretch is not None:
+            self.mid.size = (10, (mid_stretch * 10.) / self.CLOSED)
+        if rin_stretch is not None:
+            self.rin.size = (10, (rin_stretch * 10.) / self.CLOSED)
+        if pin_stretch is not None:
+            self.pin.size = (10, (pin_stretch * 10.) / self.CLOSED)
 
 
 class LabelWithDropdown():
@@ -137,14 +148,14 @@ class ExampleApp(App):
         return self.layout_main
 
     def line(self, text, empty=False):
-        #Logger.info("example:" + text)
-        if self.label is None:
-            return
-        text += "\n"
-        if empty:
-            self.label.text = text
-        else:
-            self.label.text += text
+        Logger.info(text)
+        #if self.label is None:
+        #    return
+        #text += "\n"
+        #if empty:
+        #    self.label.text = text
+        #else:
+        #    self.label.text += text
 
     def on_stop(self):
         self.running = False
@@ -153,27 +164,25 @@ class ExampleApp(App):
     def callback(self, sender: bleak.BleakGATTCharacteristic, data: bytearray):
         if data.startswith(FINGER1_HEADER):
             thumb, pointer, middle, ring = struct.unpack_from("4f", data, 2)
-            self.hand.thu, self.hand.poi, self.hand.mid, self.hand.rin = thumb, pointer, middle, ring
-            self.line(f"thumb = {thumb}, pointer = {pointer}, middle = {middle}, ring = {ring}")
+            #self.line(f"thumb = {thumb}, pointer = {pointer}, middle = {middle}, ring = {ring}")
+            self.hand.position_hand(None, thumb, pointer, middle, ring, None)
         elif data.startswith(FINGER2_HEADER):
             pinky, ax1, ay1, az1 = struct.unpack_from("4f", data, 2)
-            self.hand.pin, self.transf.accel["x"], self.transf.accel["y"], self.transf.accel["z"] = pinky, ax1, ay1, az1
-            self.line(f"pinky = {pinky}, acceleration = ({ax1}, {ay1}, {az1})")
+            self.line(f"pos = ({"{0:.2g}".format(ax1)}, {"{0:.2g}".format(ay1)}, {"{0:.2g}".format(az1)})")
+            self.hand.position_hand((ax1, -ay1), None, None, None, None, pinky)
         elif data.startswith(ROTATION_HEADER):
             gx1, gy1, gz1, radX = struct.unpack_from("4f", data, 2)
-            self.transf.rot["x"], self.transf.rot["y"], self.transf.rot["z"], self.transf.inclin["x"] = gx1, gy1, gz1, radX
-            self.line(f"angular velocity = ({gx1}, {gy1}, {gz1}), inclination x = {radX}")
+            #self.transf.rot["x"], self.transf.rot["y"], self.transf.rot["z"], self.transf.inclin["x"] = gx1, gy1, gz1, radX
+            self.line(f"vel = ({"{0:.2g}".format(gx1)}, {"{0:.2g}".format(gy1)}, {"{0:.2g}".format(gz1)})\ninx = {"{0:.2g}".format(radX)}")
         elif data.startswith(EXTRA_HEADER):
             radY = struct.unpack_from("f", data, 2)
-            self.transf.inclin["y"] = radY
-            self.line(f"inclination y = {radY}")
+            #self.transf.inclin["y"] = radY
+            #self.line(f"inclination y = {radY}")
         else:
             self.line("!!!!malformed packet!!!!")
 
     async def example(self):
-
         self.line(f"Connected")
-        return
         await self.client.connect()
         await self.client.start_notify("FFE1", self.callback)
 
