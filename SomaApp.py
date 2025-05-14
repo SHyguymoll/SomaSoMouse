@@ -3,12 +3,16 @@ from kivy.app import App
 from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.uix.label import Label
+from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.relativelayout import RelativeLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.spinner import Spinner
 from kivy.uix.button import Button
 from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.togglebutton import ToggleButton
+
+from kivy.graphics import Color, Rectangle
 import renderer
 
 
@@ -33,27 +37,45 @@ EXTRA_HEADER = bytearray(b'\xF4\xF4')
 
 Window.size = (640, 480)
 
-class FingerState():
+class FingerState(Rectangle):
     CLOSED = 100.0
     OPEN = 200.0
-    def __init__(self):
-        self.thu : float = self.OPEN
-        self.poi : float = self.OPEN
-        self.mid : float = self.OPEN
-        self.rin : float = self.OPEN
-        self.pin : float = self.OPEN
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.stretch = self.OPEN
     
-    def send_state(self):
-        return (self.thu, self.poi, self.mid, self.rin, self.pin)
+    def set_stretch(self):
+        self.size = (10., (self.stretch * 10.0) / self.CLOSED)
 
 class PositionRotationState():
     def __init__(self):
         self.accel = { "x": 0.0, "y": 0.0, "z": 0.0, }
         self.rot = { "x": 0.0, "y": 0.0, "z": 0.0, }
         self.inclin = { "x": 0.0, "y": 0.0, }
+
+class Hand(RelativeLayout):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        with self.canvas:
+            Color(1., 1., 1.)
+            #self.palm = Rectangle(size=(30, 20), pos=(0,0))
+            self.pal = Rectangle(size=(40, 30), pos=(100,100))
+            self.thu = Rectangle(size=(10, 20), pos=(80, 100))
+            self.poi = Rectangle(size=(10, 20), pos=(90, 135))
+            self.mid = Rectangle(size=(10, 20), pos=(105, 135))
+            self.rin = Rectangle(size=(10, 20), pos=(120, 135))
+            self.pin = Rectangle(size=(10, 20), pos=(135, 135))
+        #Clock.schedule_interval(self.move_hand, 1 / 60.)
+        
     
-    def send_pos_rot(self):
-        return (self.accel, self.rot)
+    #def move_hand(self, dt):
+    #    self.pal.pos[1] += dt * 10
+    #    self.thu.pos[1] += dt * 10
+    #    self.poi.pos[1] += dt * 10
+    #    self.mid.pos[1] += dt * 10
+    #    self.rin.pos[1] += dt * 10
+    #    self.pin.pos[1] += dt * 10
+
 
 class LabelWithDropdown():
     def __init__(self, l_text : str, drp_itms : list[str], drp_label : str):
@@ -80,18 +102,21 @@ class ExampleApp(App):
         self.label = None
         self.running = True
         self.client = bleak.BleakClient(address)
-        self.hand = FingerState()
-        self.transf = PositionRotationState()
+        #self.hand = FingerState()
+        #self.transf = PositionRotationState()
 
     def build(self):
         #outer box
         self.layout_main = BoxLayout()
         # left side will show render of hand for visualization
-        self.hand_render = renderer.Renderer(model_obj='Hand.obj')
-        Clock.schedule_interval(self.hand_render.update_glsl, 1 / 60.)
+        self.hand_space = RelativeLayout()
+        self.hand = Hand(pos=(0,0))
+        self.hand_space.add_widget(self.hand)
+        #self.hand_render = renderer.Renderer(model_obj='Hand.obj')
+        #Clock.schedule_interval(self.hand_render.update_glsl, 1 / 60.)
         # right side will be configuration options
         self.layout_side = BoxLayout(orientation="vertical", size_hint = (.3, 1), spacing=20, padding=10)
-        self.layout_main.add_widget(self.hand_render)
+        self.layout_main.add_widget(self.hand_space)
         self.layout_main.add_widget(self.layout_side)
         # dropdown to control current screen mouse is on (impl tbd)
         self.scrn_dropdown = LabelWithDropdown("Current Screen", ['Screen A', 'Screen B', 'Screen C'], 'Screen A')
