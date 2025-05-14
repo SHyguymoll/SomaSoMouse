@@ -49,13 +49,18 @@ class Renderer(Widget):
         self.canvas['projection_mat'] = proj
         self.canvas['diffuse_light'] = (1.0, 1.0, 0.8)
         self.canvas['ambient_light'] = (0.1, 0.1, 0.1)
+        
+        self.mesh_position[0] += delta * 100
+        Translate(self.mesh_position[0], self.mesh_position[1], self.mesh_position[2])
         self.rot.angle += delta * 100
 
     def setup_scene(self):
         Color(1, 1, 1, 1)
         PushMatrix()
+        self.mesh_position = [0., 0., 0.]
         Translate(0, 0, -3)
         self.rot = Rotate(1, 0, 1, 0)
+        
         m = list(self.scene.objects.values())[0]
         UpdateNormalMatrix()
         self.mesh = Mesh(

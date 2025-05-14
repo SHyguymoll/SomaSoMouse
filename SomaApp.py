@@ -1,8 +1,7 @@
 
 from kivy.app import App
-
+from kivy.clock import Clock
 from kivy.core.window import Window
-Window.size = (640, 480)
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.boxlayout import BoxLayout
@@ -31,6 +30,9 @@ FINGER2_HEADER = bytearray(b'\xF2\xF2')
 ROTATION_HEADER = bytearray(b'\xF3\xF3')
 EXTRA_HEADER = bytearray(b'\xF4\xF4')
 
+
+Window.size = (640, 480)
+
 class FingerState():
     CLOSED = 100.0
     OPEN = 200.0
@@ -40,12 +42,18 @@ class FingerState():
         self.mid : float = self.OPEN
         self.rin : float = self.OPEN
         self.pin : float = self.OPEN
+    
+    def send_state(self):
+        return (self.thu, self.poi, self.mid, self.rin, self.pin)
 
 class PositionRotationState():
     def __init__(self):
         self.accel = { "x": 0.0, "y": 0.0, "z": 0.0, }
         self.rot = { "x": 0.0, "y": 0.0, "z": 0.0, }
         self.inclin = { "x": 0.0, "y": 0.0, }
+    
+    def send_pos_rot(self):
+        return (self.accel, self.rot)
 
 class LabelWithDropdown():
     def __init__(self, l_text : str, drp_itms : list[str], drp_label : str):
@@ -79,10 +87,11 @@ class ExampleApp(App):
         #outer box
         self.layout_main = BoxLayout()
         # left side will show render of hand for visualization
-        self.placeholder = renderer.Renderer(model_obj='Hand.obj')
+        self.hand_render = renderer.Renderer(model_obj='Hand.obj')
+        Clock.schedule_interval(self.hand_render.update_glsl, 1 / 60.)
         # right side will be configuration options
         self.layout_side = BoxLayout(orientation="vertical", size_hint = (.3, 1), spacing=20, padding=10)
-        self.layout_main.add_widget(self.placeholder)
+        self.layout_main.add_widget(self.hand_render)
         self.layout_main.add_widget(self.layout_side)
         # dropdown to control current screen mouse is on (impl tbd)
         self.scrn_dropdown = LabelWithDropdown("Current Screen", ['Screen A', 'Screen B', 'Screen C'], 'Screen A')
