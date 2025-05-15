@@ -13,7 +13,7 @@ from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.togglebutton import ToggleButton
 
 from kivy.graphics import Color, Rectangle
-import renderer
+#import renderer
 
 
 # bind bleak's python logger into kivy's logger before importing python module using logging
@@ -37,6 +37,12 @@ EXTRA_HEADER = bytearray(b'\xF4\xF4')
 
 Window.size = (640, 480)
 
+PLEASE_WAIT = "Connection Failed!\nPlease Wait..."
+CONNECTING = "Connecting..."
+CONNECT_AVAILABLE = "Connect to Glove"
+DISCONNECT_AVAILABLE = "Disconnect"
+DISCONNECTING = "Disconnecting..."
+
 class FingerState(Rectangle):
     CLOSED = 100.0
     OPEN = 200.0
@@ -47,11 +53,6 @@ class FingerState(Rectangle):
     def set_stretch(self):
         self.size = (10., (self.stretch * 10.0) / self.CLOSED)
 
-class PositionRotationState():
-    def __init__(self):
-        self.accel = { "x": 0.0, "y": 0.0, "z": 0.0, }
-        self.rot = { "x": 0.0, "y": 0.0, "z": 0.0, }
-        self.inclin = { "x": 0.0, "y": 0.0, }
 
 class Hand(FloatLayout):
     CLOSED = 100.0
@@ -113,8 +114,6 @@ class ExampleApp(App):
         self.label = None
         self.running = True
         self.client = bleak.BleakClient(address)
-        #self.hand = FingerState()
-        #self.transf = PositionRotationState()
 
     def build(self):
         #outer box
@@ -133,20 +132,34 @@ class ExampleApp(App):
         self.scrn_dropdown = LabelWithDropdown("Current Screen", ['Screen A', 'Screen B', 'Screen C'], 'Screen A')
         self.layout_side.add_widget(self.scrn_dropdown.parent)
         # radio buttons for handling the exit button
-        self.min_on_exit = ToggleButton(text="Minimize on Exit", group="on exit", state="down", size_hint = (1, .25))
-        self.close_on_exit = ToggleButton(text="Close on Exit", group="on exit", size_hint = (1, .25))
+        self.min_on_exit = ToggleButton(text="Minimize on Exit", group="on exit", size_hint = (1, .25))
+        self.close_on_exit = ToggleButton(text="Close on Exit", group="on exit", state="down", size_hint = (1, .25))
         self.layout_side.add_widget(self.min_on_exit)
         self.layout_side.add_widget(self.close_on_exit)
         # button for connecting and disconnecting, changes depending on if glove is connected
-        self.connect_disconnect_button = Button(text="Connect to Glove", size_hint = (1, .5))
+        self.connect_disconnect_button = Button(text=CONNECT_AVAILABLE, size_hint = (1, .125))
+        self.connect_disconnect_button.bind(on_press=self.connect_button)
         self.layout_side.add_widget(self.connect_disconnect_button)
         # debug scroll for debugging (who could've guessed)
-        self.scrollview = ScrollView(do_scroll_x=False, scroll_type=["bars", "content"], size_hint = (1, .25))
+        self.scrollview = ScrollView(do_scroll_x=False, scroll_type=["bars", "content"])
         self.layout_side.add_widget(self.scrollview)
         self.label = Label(font_size="10sp")
         self.scrollview.add_widget(self.label)
         return self.layout_main
 
+    def connect_button(self, instance):
+        if instance.text != CONNECT_AVAILABLE:
+            return
+        asyncio.create_task(self.connect(instance))
+    
+    def disconnect_button(self, instance):
+        if instance.text != DISCONNECT_AVAILABLE:
+            return
+        asyncio.create_task(self.disconnect(instance))
+
+    def reset_glove_text(self, _dt):
+        self.connect_disconnect_button.text = CONNECT_AVAILABLE
+    
     def line(self, text, empty=False):
         Logger.info(text)
         #if self.label is None:
@@ -159,7 +172,6 @@ class ExampleApp(App):
 
     def on_stop(self):
         self.running = False
-
 
     def callback(self, sender: bleak.BleakGATTCharacteristic, data: bytearray):
         if data.startswith(FINGER1_HEADER):
@@ -180,21 +192,32 @@ class ExampleApp(App):
             #self.line(f"inclination y = {radY}")
         else:
             self.line("!!!!malformed packet!!!!")
-
-    async def example(self):
-        self.line(f"Connected")
-        await self.client.connect()
-        await self.client.start_notify("FFE1", self.callback)
+    
+    async def connect(self, instance):
+        self.line(f"Attempting Connect")
+        instance.text = CONNECTING
+        try:
+            await self.client.connect()
+            await self.client.start_notify("FFE1", self.callback)
+            if instance is not None:
+                instance.text = DISCONNECT_AVAILABLE
+                instance.bind(on_press=self.disconnect_button)
+        except bleak.exc.BleakDeviceNotFoundError:
+            self.connect_disconnect_button.text = PLEASE_WAIT
+            Clock.schedule_once(self.reset_glove_text, 3.0)
+    
+    async def disconnect(self, instance):
+        instance.text = DISCONNECTING
+        await self.client.disconnect()
+        instance.bind(on_press=self.connect_button)
 
 async def main(app : ExampleApp):
-    await asyncio.gather(app.async_run("asyncio"), app.example())
+    await app.async_run("asyncio")
+    # for safety, incase glove was connected, disconnect now
     await app.client.disconnect()
-
 
 if __name__ == "__main__":
     Logger.setLevel(logging.DEBUG)
 
-
-# app running on one thread with two async coroutines
 app = ExampleApp()
 asyncio.run(main(app))
