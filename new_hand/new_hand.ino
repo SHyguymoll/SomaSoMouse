@@ -39,7 +39,7 @@ struct finger_d {
 
 finger_d fingers;
 
-// fingers part 2 and acceleration, handles pinky and acceleration data
+// fingers part 2 and accelerometer data, handles pinky and acceleration data
 // 2 (header) + 4 (pinky) + 4 (ax) + 4 (ay) + 4 (az) + 2 (byte alignment footer)
 struct pinky_accel_d {
   uint8_t header[2] = {0xF2, 0xF2};
@@ -50,7 +50,7 @@ struct pinky_accel_d {
 
 pinky_accel_d pinky_accel;
 
-// rotation struct, also x inclination
+// gyroscope measured angular velocity struct, also x inclination
 // 2 (header) + 4 (gx1) + 4 (gy1) + 4 (gz1) + 4 (radianX_last) + 2 (byte alignment footer)
 struct rotation_d {
   uint8_t header[2] = {0xF3, 0xF3};
@@ -205,10 +205,10 @@ void finger() {
       //Serial.println("FINGER READY TO SEND");
     }
     // Otherwise, send calibration message
-    //else {
-    //  Bth.write("-----CALIBRATING----");
-    //}
-    
+    else {
+      Bth.write("-----CALIBRATING----");
+    }
+
     timer_sampling = millis() + 20;
 
   }
