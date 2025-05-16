@@ -99,7 +99,6 @@ float gx0, gy0, gz0;
 int ax_offset, ay_offset, az_offset, gx_offset, gy_offset, gz_offset;
 
 
-
 bool finger_ready = false;
 bool position_ready = false;
 
@@ -175,11 +174,11 @@ void reset_offsets() {
 #define MIN_STRETCH_PREPARE_PHASE 7
 #define MIN_STRETCH_GET_PHASE 8
 
+uint8_t init_step = 0;
 // read potentiometer data of each finger
 void finger() {
   static uint32_t timer_sampling;
   static uint32_t timer_init;
-  static uint8_t init_step = 0;
 
   if (timer_sampling <= millis() && !finger_ready)
   {
@@ -371,18 +370,18 @@ void actions() {
 
 void loop() {
   // prepare data to be sent in functions
-  finger();  // update data of finger potentiometers 
+  finger();  // update data of finger potentiometers
   update_mpu6050();  // update data of inclination sensor
   if (finger_ready && position_ready) {
     //Serial.println("SENDING DATA");
     Bth.write((uint8_t *) &fingers, sizeof(finger_d));
-    delay(20);
+    delay(5);
     Bth.write((uint8_t *) &pinky_accel, sizeof(pinky_accel_d));
-    delay(20);
+    delay(5);
     Bth.write((uint8_t *) &rot_data, sizeof(rotation_d));
-    delay(20);
+    delay(5);
     Bth.write((uint8_t *) &misc_data, sizeof(extra_d));
-    delay(20);
+    delay(5);
     finger_ready = false;
     position_ready = false;
     //Serial.println("DATA SENT");
