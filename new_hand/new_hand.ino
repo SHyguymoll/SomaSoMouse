@@ -235,14 +235,14 @@ void finger() {
         set_leds(true, true, false, false, false);
         timer_init = millis() + 500;
         init_step++;
-        Serial.print("max_list:");
+        //Serial.print("max_list:");
         for (int i = 14; i <= 18; i++)
         {
           max_list[i - 14] = sampling[i - 14];
-          Serial.print(max_list[i - 14]);
-          Serial.print("-");
+          //Serial.print(max_list[i - 14]);
+          //Serial.print("-");
         }
-        Serial.println();
+        //Serial.println();
         break;
       case PAUSE_PHASE:
         init_step++;
@@ -269,14 +269,14 @@ void finger() {
         set_leds(true, false, true, false, true);
         timer_init = millis() + 500;
         init_step++;
-        Serial.print("min_list:");
+        //Serial.print("min_list:");
         for (int i = 14; i <= 18; i++)
         {
           min_list[i - 14] = sampling[i - 14];
-          Serial.print(min_list[i - 14]);
-          Serial.print("-");
+        //  Serial.print(min_list[i - 14]);
+        //  Serial.print("-");
         }
-        Serial.println();
+        //Serial.println();
         turn_on = false;
         set_leds(false, false, false, false, false);
         break;
@@ -341,30 +341,33 @@ void update_mpu6050()
 }
 
 bool key_state = false;
+uint32_t hold_time = 0;
 
 void actions() {
-  if (turn_on)
-    return;
+  if (key_state) {
+    ++hold_time;
+    set_leds(hold_time > 4, hold_time > 8, hold_time > 12, hold_time > 16, hold_time > 20);
+  }
   // if K3 button is pressed 
-  if(key_state == true && digitalRead(7) == true)
+  if(key_state && digitalRead(7) == true)
   {
     //Serial.println("BUTTON RELEASED");
-    delay(50);
-    if(digitalRead(7) == true)
-      key_state = false;
+    key_state = false;
+    //Serial.println((unsigned long) hold_time);
+    if (hold_time >= 8 && hold_time < 20) { //reset pointing direction
+      reset_offsets();
+    }
+    else if (hold_time >= 20) { //reset finger calibration
+      init_step = 0;
+      turn_on = true;
+    }
+    hold_time = 0;
+    set_leds(false, false, false, false, false);
   }
   if (digitalRead(7) == false && key_state == false)
   {
-    //Serial.println("RESETTING OFFSET");
-    delay(50);
-    
-    // If K3 is pressed, reset position offsets
-    if (digitalRead(7) == false)
-    {
-      key_state = true;
-      reset_offsets();
-    }
-    //Serial.println("OFFSET RESET");
+    //Serial.println("K3 held!");
+    key_state = true;
   }
 }
 
