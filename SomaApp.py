@@ -42,6 +42,7 @@ CONNECTING = "Connecting..."
 CONNECT_AVAILABLE = "Connect to Glove"
 DISCONNECT_AVAILABLE = "Disconnect"
 DISCONNECTING = "Disconnecting..."
+GLOVE_RECALIBRATING = "Glove Re-calibrating..."
 
 class FingerState(Rectangle):
     CLOSED = 100.0
@@ -69,7 +70,7 @@ class Hand(FloatLayout):
             self.pin = Rectangle(size=(10, 20), pos=(self.pal.pos[0] + 35, self.pal.pos[1] + 35))
         
     
-    def position_hand(self, new_pos : tuple[float, float], thu_stretch : float, poi_stretch : float, mid_stretch : float, rin_stretch : float, pin_stretch : float):
+    def update_hand(self, new_pos : tuple[float, float], thu_s : float, poi_s : float, mid_s : float, rin_s : float, pin_s : float):
         if new_pos is not None:
             self.pal.pos = (new_pos[0] * 1000, new_pos[1] * 1000)
             self.thu.pos = (self.pal.pos[0] - 20, self.pal.pos[1] + 0)
@@ -77,16 +78,16 @@ class Hand(FloatLayout):
             self.mid.pos = (self.pal.pos[0] + 5, self.pal.pos[1] + 35)
             self.rin.pos = (self.pal.pos[0] + 20, self.pal.pos[1] + 35)
             self.pin.pos = (self.pal.pos[0] + 35, self.pal.pos[1] + 35)
-        if thu_stretch is not None:
-            self.thu.size = (10, (thu_stretch * 10.) / self.CLOSED)
-        if poi_stretch is not None:
-            self.poi.size = (10, (poi_stretch * 10.) / self.CLOSED)
-        if mid_stretch is not None:
-            self.mid.size = (10, (mid_stretch * 10.) / self.CLOSED)
-        if rin_stretch is not None:
-            self.rin.size = (10, (rin_stretch * 10.) / self.CLOSED)
-        if pin_stretch is not None:
-            self.pin.size = (10, (pin_stretch * 10.) / self.CLOSED)
+        if thu_s is not None:
+            self.thu.size = (10, (thu_s * 10.) / self.CLOSED)
+        if poi_s is not None:
+            self.poi.size = (10, (poi_s * 10.) / self.CLOSED)
+        if mid_s is not None:
+            self.mid.size = (10, (mid_s * 10.) / self.CLOSED)
+        if rin_s is not None:
+            self.rin.size = (10, (rin_s * 10.) / self.CLOSED)
+        if pin_s is not None:
+            self.pin.size = (10, (pin_s * 10.) / self.CLOSED)
 
 
 class LabelWithDropdown():
@@ -162,13 +163,13 @@ class ExampleApp(App):
     
     def line(self, text, empty=False):
         Logger.info(text)
-        #if self.label is None:
-        #    return
-        #text += "\n"
-        #if empty:
-        #    self.label.text = text
-        #else:
-        #    self.label.text += text
+        if self.label is None:
+            return
+        text += "\n"
+        if empty:
+            self.label.text = text
+        else:
+            self.label.text += text
 
     def on_stop(self):
         self.running = False
@@ -177,11 +178,11 @@ class ExampleApp(App):
         if data.startswith(FINGER1_HEADER):
             thumb, pointer, middle, ring = struct.unpack_from("4f", data, 2)
             #self.line(f"thumb = {thumb}, pointer = {pointer}, middle = {middle}, ring = {ring}")
-            self.hand.position_hand(None, thumb, pointer, middle, ring, None)
+            self.hand.update_hand(None, thumb, pointer, middle, ring, None)
         elif data.startswith(FINGER2_HEADER):
             pinky, ax1, ay1, az1 = struct.unpack_from("4f", data, 2)
             self.line(f"pos = ({"{0:.2g}".format(ax1)}, {"{0:.2g}".format(ay1)}, {"{0:.2g}".format(az1)})")
-            self.hand.position_hand((ax1, -ay1), None, None, None, None, pinky)
+            self.hand.update_hand((ax1, -ay1), None, None, None, None, pinky)
         elif data.startswith(ROTATION_HEADER):
             gx1, gy1, gz1, radX = struct.unpack_from("4f", data, 2)
             #self.transf.rot["x"], self.transf.rot["y"], self.transf.rot["z"], self.transf.inclin["x"] = gx1, gy1, gz1, radX
@@ -190,6 +191,9 @@ class ExampleApp(App):
             radY = struct.unpack_from("f", data, 2)
             #self.transf.inclin["y"] = radY
             #self.line(f"inclination y = {radY}")
+        elif data == b'-----CALIBRATING----':
+            self.connect_disconnect_button.text = GLOVE_RECALIBRATING
+            pass
         else:
             self.line("!!!!malformed packet!!!!")
     
