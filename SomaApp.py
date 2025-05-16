@@ -197,14 +197,14 @@ class ExampleApp(App):
                 self.calibrate_flag = False
             gx1, gy1, gz1, radX = struct.unpack_from("4f", data, 2)
             #self.transf.rot["x"], self.transf.rot["y"], self.transf.rot["z"], self.transf.inclin["x"] = gx1, gy1, gz1, radX
-            self.line(f"vel = ({"{0:.2g}".format(gx1)}, {"{0:.2g}".format(gy1)}, {"{0:.2g}".format(gz1)})\ninx = {"{0:.2g}".format(radX)}")
+            self.line(f"vel = ({"{0:.2g}".format(gx1)}, {"{0:.2g}".format(gy1)}, {"{0:.2g}".format(gz1)}) inx = {"{0:.2g}".format(radX)}")
         elif data.startswith(EXTRA_HEADER):
             if self.connect_disconnect_button.text == GLOVE_RECALIBRATING and self.calibrate_flag == True:
                 self.connect_disconnect_button.text = DISCONNECT_AVAILABLE
                 self.calibrate_flag = False
             radY = struct.unpack_from("f", data, 2)
             #self.transf.inclin["y"] = radY
-            #self.line(f"inclination y = {radY}")
+            self.line(f"iny = {radY}")
         elif data == b'-----CALIBRATING----':
             self.connect_disconnect_button.text = GLOVE_RECALIBRATING
             self.calibrate_flag = True
@@ -229,6 +229,7 @@ class ExampleApp(App):
         instance.text = DISCONNECTING
         await self.client.disconnect()
         instance.bind(on_press=self.connect_button)
+        instance.text = CONNECT_AVAILABLE
 
 async def main(app : ExampleApp):
     await app.async_run("asyncio")
