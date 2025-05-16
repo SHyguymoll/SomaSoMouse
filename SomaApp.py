@@ -146,6 +146,8 @@ class ExampleApp(App):
         self.layout_side.add_widget(self.scrollview)
         self.label = Label(font_size="10sp")
         self.scrollview.add_widget(self.label)
+        # flag for calibrating glove
+        self.calibrate_flag = False
         return self.layout_main
 
     def connect_button(self, instance):
@@ -176,23 +178,36 @@ class ExampleApp(App):
 
     def callback(self, sender: bleak.BleakGATTCharacteristic, data: bytearray):
         if data.startswith(FINGER1_HEADER):
+            if self.connect_disconnect_button.text == GLOVE_RECALIBRATING and self.calibrate_flag == True:
+                self.connect_disconnect_button.text = DISCONNECT_AVAILABLE
+                self.calibrate_flag = False
             thumb, pointer, middle, ring = struct.unpack_from("4f", data, 2)
             #self.line(f"thumb = {thumb}, pointer = {pointer}, middle = {middle}, ring = {ring}")
             self.hand.update_hand(None, thumb, pointer, middle, ring, None)
         elif data.startswith(FINGER2_HEADER):
+            if self.connect_disconnect_button.text == GLOVE_RECALIBRATING and self.calibrate_flag == True:
+                self.connect_disconnect_button.text = DISCONNECT_AVAILABLE
+                self.calibrate_flag = False
             pinky, ax1, ay1, az1 = struct.unpack_from("4f", data, 2)
             self.line(f"pos = ({"{0:.2g}".format(ax1)}, {"{0:.2g}".format(ay1)}, {"{0:.2g}".format(az1)})")
             self.hand.update_hand((ax1, -ay1), None, None, None, None, pinky)
         elif data.startswith(ROTATION_HEADER):
+            if self.connect_disconnect_button.text == GLOVE_RECALIBRATING and self.calibrate_flag == True:
+                self.connect_disconnect_button.text = DISCONNECT_AVAILABLE
+                self.calibrate_flag = False
             gx1, gy1, gz1, radX = struct.unpack_from("4f", data, 2)
             #self.transf.rot["x"], self.transf.rot["y"], self.transf.rot["z"], self.transf.inclin["x"] = gx1, gy1, gz1, radX
             self.line(f"vel = ({"{0:.2g}".format(gx1)}, {"{0:.2g}".format(gy1)}, {"{0:.2g}".format(gz1)})\ninx = {"{0:.2g}".format(radX)}")
         elif data.startswith(EXTRA_HEADER):
+            if self.connect_disconnect_button.text == GLOVE_RECALIBRATING and self.calibrate_flag == True:
+                self.connect_disconnect_button.text = DISCONNECT_AVAILABLE
+                self.calibrate_flag = False
             radY = struct.unpack_from("f", data, 2)
             #self.transf.inclin["y"] = radY
             #self.line(f"inclination y = {radY}")
         elif data == b'-----CALIBRATING----':
             self.connect_disconnect_button.text = GLOVE_RECALIBRATING
+            self.calibrate_flag = True
             pass
         else:
             self.line("!!!!malformed packet!!!!")
