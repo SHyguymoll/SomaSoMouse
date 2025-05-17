@@ -60,16 +60,19 @@ class Hand(FloatLayout):
     OPEN = 200.0
     class Modes(Enum):
         ACCEL_XY = 0
-        ACCEL_XZ = 1
-        ACCEL_YZ = 2
+        ACCEL_ZY = 1
+        ACCEL_ZX = 2
         GYRO_XY = 3
-        GYRO_XZ = 4
-        GYRO_YZ = 5
+        GYRO_ZY = 4
+        GYRO_ZX = 5
+
     
     mode = Modes.ACCEL_XY
+    invert_hor = False
+    invert_ver = False
 
     def mode_is_accel(self) -> bool:
-        return self.mode < self.Modes.GYRO_XY
+        return self.mode in [self.Modes.ACCEL_XY, self.Modes.ACCEL_ZY, self.Modes.ACCEL_ZX]
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -83,10 +86,10 @@ class Hand(FloatLayout):
             self.pin = Rectangle(size=(10, 20), pos=(self.pal.pos[0] + 35, self.pal.pos[1] + 35))
         
     
-    def update_hand(self, new_pos : tuple[float, float], thu_s : float, poi_s : float, mid_s : float, rin_s : float, pin_s : float):
-        if new_pos is not None:
-            if self.mode_is_accel():
-                self.pal.pos = (new_pos[0] * 1000, new_pos[1] * 1000)
+    def update_hand(self, is_accel : bool, new_pos : tuple[float, float], thu_s : float, poi_s : float, mid_s : float, rin_s : float, pin_s : float):
+        if new_pos is not None and self.mode_is_accel() == is_accel:
+            if is_accel:
+                self.pal.pos = (new_pos[0] * 1000 + Window.width / 2., new_pos[1] * 1000 + Window.height / 2.)
             else:
                 self.pal.pos += (new_pos[0], new_pos[1])
             self.thu.pos = (self.pal.pos[0] - 20, self.pal.pos[1] + 0)
@@ -152,15 +155,22 @@ class ExampleApp(App):
         # radio buttons for handling how the glove values are interpreted
         # use accelerometer or gyroscope
         self.use_accel = ToggleButton(text="Accelerometer", group="interp mode", state="down", size_hint = (1, .125), allow_no_selection = False)
+        self.use_accel.bind(on_press=self.change_mode)
         self.use_gyro = ToggleButton(text="Gyroscope Velocity", group="interp mode", size_hint = (1, .125), allow_no_selection = False)
+        self.use_gyro.bind(on_press=self.change_mode)
         # use XY, ZY, or ZX
         self.used_values = BoxLayout(size_hint = (1, .125), spacing = 5, padding = 5)
         self.xy_but = ToggleButton(text="XY", group="move values", state="down", size_hint = (.125, 1), allow_no_selection = False)
+        self.xy_but.bind(on_press=self.change_mode)
         self.zy_but = ToggleButton(text="ZY", group="move values", size_hint = (.125, 1), allow_no_selection = False)
+        self.zy_but.bind(on_press=self.change_mode)
         self.zx_but = ToggleButton(text="ZX", group="move values", size_hint = (.125, 1), allow_no_selection = False)
+        self.zx_but.bind(on_press=self.change_mode)
         # invert horizontal and vertical
         self.invert_horizontal = ToggleButton(text="Invert Horizontal", size_hint = (1, .125))
+        self.invert_horizontal.bind(state=self.invert_dir)
         self.invert_vertical = ToggleButton(text="Invert Vertical", size_hint = (1, .125))
+        self.invert_vertical.bind(state=self.invert_dir)
         # add buttons
         self.used_values.add_widget(self.xy_but)
         self.used_values.add_widget(self.zy_but)
@@ -182,6 +192,38 @@ class ExampleApp(App):
         # flag for calibrating glove
         self.calibrate_flag = False
         return self.layout_main
+
+    def change_mode(self, instance):
+        match instance:
+            case self.use_accel:
+                match self.hand.mode:
+                    case self.hand.Modes.GYRO_XY:
+                        self.hand.mode = self.hand.Modes.ACCEL_XY
+                    case self.hand.Modes.GYRO_ZY:
+                        self.hand.mode = self.hand.Modes.ACCEL_ZY
+                    case self.hand.Modes.GYRO_ZX:
+                        self.hand.mode = self.hand.Modes.ACCEL_ZX
+            case self.use_gyro:
+                match self.hand.mode:
+                    case self.hand.Modes.ACCEL_XY:
+                        self.hand.mode = self.hand.Modes.GYRO_XY
+                    case self.hand.Modes.ACCEL_ZY:
+                        self.hand.mode = self.hand.Modes.GYRO_ZY
+                    case self.hand.Modes.ACCEL_ZX:
+                        self.hand.mode = self.hand.Modes.GYRO_ZX
+            case self.xy_but:
+                self.hand.mode = self.hand.Modes.ACCEL_XY if self.hand.mode_is_accel() else self.hand.Modes.GYRO_XY
+            case self.zy_but:
+                self.hand.mode = self.hand.Modes.ACCEL_ZY if self.hand.mode_is_accel() else self.hand.Modes.GYRO_ZY
+            case self.zx_but:
+                self.hand.mode = self.hand.Modes.ACCEL_ZX if self.hand.mode_is_accel() else self.hand.Modes.GYRO_ZX
+    
+    def invert_dir(self, instance, state):
+        match instance:
+            case self.invert_horizontal:
+                self.hand.invert_hor = state == "down"
+            case self.invert_vertical:
+                self.hand.invert_ver = state == "down"
 
     def connect_button(self, instance):
         if instance.text != CONNECT_AVAILABLE:
@@ -223,14 +265,20 @@ class ExampleApp(App):
                 self.calibrate_flag = False
             thumb, pointer, middle, ring = struct.unpack_from("4f", data, 2)
             #self.line(f"thumb = {thumb}, pointer = {pointer}, middle = {middle}, ring = {ring}")
-            self.hand.update_hand(None, thumb, pointer, middle, ring, None)
+            self.hand.update_hand(None, None, thumb, pointer, middle, ring, None)
         elif data.startswith(FINGER2_HEADER):
             if self.connect_disconnect_button.text == GLOVE_RECALIBRATING and self.calibrate_flag == True:
                 self.connect_disconnect_button.text = DISCONNECT_AVAILABLE
                 self.calibrate_flag = False
             pinky, ax1, ay1, az1 = struct.unpack_from("4f", data, 2)
             self.line(f"pos = ({"{0:.2g}".format(ax1)}, {"{0:.2g}".format(ay1)}, {"{0:.2g}".format(az1)})")
-            self.hand.update_hand((ax1, -ay1), None, None, None, None, pinky)
+            match self.hand.mode:
+                case self.hand.Modes.ACCEL_XY:
+                    self.hand.update_hand(True, (ax1, -ay1), None, None, None, None, pinky)
+                case self.hand.Modes.ACCEL_ZY:
+                    self.hand.update_hand(True, (az1, -ay1), None, None, None, None, pinky)
+                case self.hand.Modes.ACCEL_ZX:
+                    self.hand.update_hand(True, (az1, ax1), None, None, None, None, pinky)
         elif data.startswith(ROTATION_HEADER):
             if self.connect_disconnect_button.text == GLOVE_RECALIBRATING and self.calibrate_flag == True:
                 self.connect_disconnect_button.text = DISCONNECT_AVAILABLE
@@ -238,6 +286,13 @@ class ExampleApp(App):
             gx1, gy1, gz1, radX = struct.unpack_from("4f", data, 2)
             #self.transf.rot["x"], self.transf.rot["y"], self.transf.rot["z"], self.transf.inclin["x"] = gx1, gy1, gz1, radX
             self.line(f"vel = ({"{0:.2g}".format(gx1)}, {"{0:.2g}".format(gy1)}, {"{0:.2g}".format(gz1)}) inx = {"{0:.2g}".format(radX)}")
+            match self.hand.mode:
+                case self.hand.Modes.GYRO_XY:
+                    self.hand.update_hand(True, (gx1, -gy1), None, None, None, None, None)
+                case self.hand.Modes.GYRO_ZY:
+                    self.hand.update_hand(True, (gz1, -gy1), None, None, None, None, None)
+                case self.hand.Modes.GYRO_ZX:
+                    self.hand.update_hand(True, (gz1, gx1), None, None, None, None, None)
         elif data.startswith(EXTRA_HEADER):
             if self.connect_disconnect_button.text == GLOVE_RECALIBRATING and self.calibrate_flag == True:
                 self.connect_disconnect_button.text = DISCONNECT_AVAILABLE
