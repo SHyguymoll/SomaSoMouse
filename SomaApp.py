@@ -1,4 +1,5 @@
 
+from enum import Enum
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -57,6 +58,19 @@ class FingerState(Rectangle):
 class Hand(FloatLayout):
     CLOSED = 100.0
     OPEN = 200.0
+    class Modes(Enum):
+        ACCEL_XY = 0
+        ACCEL_XZ = 1
+        ACCEL_YZ = 2
+        GYRO_XY = 3
+        GYRO_XZ = 4
+        GYRO_YZ = 5
+    
+    mode = Modes.ACCEL_XY
+
+    def mode_is_accel(self) -> bool:
+        return self.mode < self.Modes.GYRO_XY
+    
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         with self.canvas:
@@ -71,7 +85,10 @@ class Hand(FloatLayout):
     
     def update_hand(self, new_pos : tuple[float, float], thu_s : float, poi_s : float, mid_s : float, rin_s : float, pin_s : float):
         if new_pos is not None:
-            self.pal.pos = (new_pos[0] * 1000, new_pos[1] * 1000)
+            if self.mode_is_accel():
+                self.pal.pos = (new_pos[0] * 1000, new_pos[1] * 1000)
+            else:
+                self.pal.pos += (new_pos[0], new_pos[1])
             self.thu.pos = (self.pal.pos[0] - 20, self.pal.pos[1] + 0)
             self.poi.pos = (self.pal.pos[0] - 10, self.pal.pos[1] + 35)
             self.mid.pos = (self.pal.pos[0] + 5, self.pal.pos[1] + 35)
