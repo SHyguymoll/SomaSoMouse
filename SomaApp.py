@@ -44,16 +44,6 @@ DISCONNECT_AVAILABLE = "Disconnect"
 DISCONNECTING = "Disconnecting..."
 GLOVE_RECALIBRATING = "Glove Re-calibrating..."
 
-class FingerState(Rectangle):
-    CLOSED = 100.0
-    OPEN = 200.0
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.stretch = self.OPEN
-    
-    def set_stretch(self):
-        self.size = (10., (self.stretch * 10.0) / self.CLOSED)
-
 
 class Hand(FloatLayout):
     CLOSED = 100.0
