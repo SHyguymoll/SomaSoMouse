@@ -61,6 +61,11 @@ class Hand(FloatLayout):
     invert_hor = False
     invert_ver = False
 
+    accel_deadzone_signed = 100.
+    
+    gyro_deadzone_r_signed = 100.
+    gyro_sens = 0.01
+
     def mode_is_accel(self) -> bool:
         return self.mode in [self.Modes.ACCEL_XY, self.Modes.ACCEL_ZY, self.Modes.ACCEL_ZX]
     
@@ -79,11 +84,17 @@ class Hand(FloatLayout):
     def update_hand(self, is_accel : bool, new_pos : tuple[float, float], thu_s : float, poi_s : float, mid_s : float, rin_s : float, pin_s : float):
         if new_pos is not None and self.mode_is_accel() == is_accel:
             new_pos = (new_pos[0] * (-1 if self.invert_hor else 1), new_pos[1] * (-1 if self.invert_ver else 1))
-            Logger.info(str(new_pos) + " " + str(is_accel))
+            #Logger.info(str(new_pos) + " " + str(is_accel))
             if is_accel:
-                self.pal.pos = (new_pos[0] * 1000 + Window.width / 2., new_pos[1] * 1000 + Window.height / 2.)
+                new_pos = (new_pos[0] * 1000 + Window.width / 2., new_pos[1] * 1000 + Window.height / 2.)
+                new_dif = (self.pal.pos[0] - new_pos[0], self.pal.pos[1] - new_pos[1])
+                new_dif_dist_signed = pow(new_dif[0], 2) + pow(new_dif[1], 2)
+                Logger.info(str(new_dif) + " " + str(new_dif_dist_signed))
+                if new_dif_dist_signed >= self.accel_deadzone_signed:
+                    self.pal.pos = new_pos
             else:
-                self.pal.pos = (self.pal.pos[0] + (new_pos[0] * 0.01), self.pal.pos[1] + (new_pos[1] * 0.01))
+                if pow(new_pos[0], 2) + pow(new_pos[1], 2) >= self.gyro_deadzone_r_signed:
+                    self.pal.pos = (self.pal.pos[0] + (new_pos[0] * self.gyro_sens), self.pal.pos[1] + (new_pos[1] * self.gyro_sens))
             self.thu.pos = (self.pal.pos[0] - 20, self.pal.pos[1] + 0)
             self.poi.pos = (self.pal.pos[0] - 10, self.pal.pos[1] + 35)
             self.mid.pos = (self.pal.pos[0] + 5, self.pal.pos[1] + 35)
