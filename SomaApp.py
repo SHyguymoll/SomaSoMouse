@@ -88,6 +88,7 @@ class Hand(FloatLayout):
     
     def update_hand(self, is_accel : bool, new_pos : tuple[float, float], thu_s : float, poi_s : float, mid_s : float, rin_s : float, pin_s : float):
         if new_pos is not None and self.mode_is_accel() == is_accel:
+            Logger.info(str(new_pos) + " " + str(is_accel))
             if is_accel:
                 self.pal.pos = (new_pos[0] * 1000 + Window.width / 2., new_pos[1] * 1000 + Window.height / 2.)
             else:
@@ -271,7 +272,7 @@ class ExampleApp(App):
                 self.connect_disconnect_button.text = DISCONNECT_AVAILABLE
                 self.calibrate_flag = False
             pinky, ax1, ay1, az1 = struct.unpack_from("4f", data, 2)
-            self.line(f"pos = ({"{0:.2g}".format(ax1)}, {"{0:.2g}".format(ay1)}, {"{0:.2g}".format(az1)})")
+            #self.line(f"pos = ({"{0:.2g}".format(ax1)}, {"{0:.2g}".format(ay1)}, {"{0:.2g}".format(az1)})")
             match self.hand.mode:
                 case self.hand.Modes.ACCEL_XY:
                     self.hand.update_hand(True, (ax1, -ay1), None, None, None, None, pinky)
@@ -284,7 +285,7 @@ class ExampleApp(App):
                 self.connect_disconnect_button.text = DISCONNECT_AVAILABLE
                 self.calibrate_flag = False
             gx1, gy1, gz1, radX = struct.unpack_from("4f", data, 2)
-            self.line(f"vel = ({"{0:.2g}".format(gx1)}, {"{0:.2g}".format(gy1)}, {"{0:.2g}".format(gz1)}) inx = {"{0:.2g}".format(radX)}")
+            #self.line(f"vel = ({"{0:.2g}".format(gx1)}, {"{0:.2g}".format(gy1)}, {"{0:.2g}".format(gz1)}) inx = {"{0:.2g}".format(radX)}")
             match self.hand.mode:
                 case self.hand.Modes.GYRO_XY:
                     self.hand.update_hand(True, (gx1, -gy1), None, None, None, None, None)
@@ -297,7 +298,7 @@ class ExampleApp(App):
                 self.connect_disconnect_button.text = DISCONNECT_AVAILABLE
                 self.calibrate_flag = False
             radY = struct.unpack_from("f", data, 2)
-            self.line(f"iny = {radY}")
+            #self.line(f"iny = {radY}")
         elif data == b'-----CALIBRATING----':
             self.connect_disconnect_button.text = GLOVE_RECALIBRATING
             self.calibrate_flag = True
