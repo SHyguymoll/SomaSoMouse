@@ -132,11 +132,27 @@ class ExampleApp(App):
         # dropdown to control current screen mouse is on (impl tbd)
         self.scrn_dropdown = LabelWithDropdown("Current Screen", ['Screen A', 'Screen B', 'Screen C'], 'Screen A')
         self.layout_side.add_widget(self.scrn_dropdown.parent)
-        # radio buttons for handling the exit button
-        self.min_on_exit = ToggleButton(text="Minimize on Exit", group="on exit", size_hint = (1, .25))
-        self.close_on_exit = ToggleButton(text="Close on Exit", group="on exit", state="down", size_hint = (1, .25))
-        self.layout_side.add_widget(self.min_on_exit)
-        self.layout_side.add_widget(self.close_on_exit)
+        # radio buttons for handling how the glove values are interpreted
+        # use accelerometer or gyroscope
+        self.use_accel = ToggleButton(text="Accelerometer", group="interp mode", state="down", size_hint = (1, .125), allow_no_selection = False)
+        self.use_gyro = ToggleButton(text="Gyroscope Velocity", group="interp mode", size_hint = (1, .125), allow_no_selection = False)
+        # use XY, ZY, or ZX
+        self.used_values = BoxLayout(size_hint = (1, .125), spacing = 5, padding = 5)
+        self.xy_but = ToggleButton(text="XY", group="move values", state="down", size_hint = (.125, 1), allow_no_selection = False)
+        self.zy_but = ToggleButton(text="ZY", group="move values", size_hint = (.125, 1), allow_no_selection = False)
+        self.zx_but = ToggleButton(text="ZX", group="move values", size_hint = (.125, 1), allow_no_selection = False)
+        # invert horizontal and vertical
+        self.invert_horizontal = ToggleButton(text="Invert Horizontal", size_hint = (1, .125))
+        self.invert_vertical = ToggleButton(text="Invert Vertical", size_hint = (1, .125))
+        # add buttons
+        self.used_values.add_widget(self.xy_but)
+        self.used_values.add_widget(self.zy_but)
+        self.used_values.add_widget(self.zx_but)
+        self.layout_side.add_widget(self.use_accel)
+        self.layout_side.add_widget(self.use_gyro)
+        self.layout_side.add_widget(self.used_values)
+        self.layout_side.add_widget(self.invert_horizontal)
+        self.layout_side.add_widget(self.invert_vertical)
         # button for connecting and disconnecting, changes depending on if glove is connected
         self.connect_disconnect_button = Button(text=CONNECT_AVAILABLE, size_hint = (1, .125))
         self.connect_disconnect_button.bind(on_press=self.connect_button)
