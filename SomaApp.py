@@ -284,7 +284,7 @@ class ExampleApp(App):
             if self.connect_disconnect_button.text == GLOVE_RECALIBRATING and self.calibrate_flag == True:
                 self.connect_disconnect_button.text = DISCONNECT_AVAILABLE
                 self.calibrate_flag = False
-            gx1, gy1, gz1, radX = struct.unpack_from("4f", data, 2)
+            gy1, gx1, gz1, radX = struct.unpack_from("4f", data, 2)
             #self.line(f"vel = ({"{0:.2g}".format(gx1)}, {"{0:.2g}".format(gy1)}, {"{0:.2g}".format(gz1)}) inx = {"{0:.2g}".format(radX)}")
             match self.hand.mode:
                 case self.hand.Modes.GYRO_XY:
