@@ -317,7 +317,13 @@ class ExampleApp(App):
         except bleak.exc.BleakDeviceNotFoundError:
             self.connect_disconnect_button.text = PLEASE_WAIT
             self.line("Glove was not found.", True)
-            Clock.schedule_once(self.reset_glove_text, 3.0)
+            Clock.schedule_once(self.reset_glove_text, 1.0)
+        except bleak.exc.BleakError:
+            self.connect_disconnect_button.text = PLEASE_WAIT
+            self.line("Glove failed to connect.", True)
+            Clock.schedule_once(self.reset_glove_text, 1.5)
+
+
     
     async def disconnect(self, instance):
         self.disc_purposeful = True
