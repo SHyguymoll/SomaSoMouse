@@ -78,11 +78,12 @@ class Hand(FloatLayout):
     
     def update_hand(self, is_accel : bool, new_pos : tuple[float, float], thu_s : float, poi_s : float, mid_s : float, rin_s : float, pin_s : float):
         if new_pos is not None and self.mode_is_accel() == is_accel:
+            new_pos = (new_pos[0] * (-1 if self.invert_hor else 1), new_pos[1] * (-1 if self.invert_ver else 1))
             Logger.info(str(new_pos) + " " + str(is_accel))
             if is_accel:
                 self.pal.pos = (new_pos[0] * 1000 + Window.width / 2., new_pos[1] * 1000 + Window.height / 2.)
             else:
-                self.pal.pos += (new_pos[0], new_pos[1])
+                self.pal.pos = (self.pal.pos[0] + new_pos[0], self.pal.pos[1] + new_pos[1])
             self.thu.pos = (self.pal.pos[0] - 20, self.pal.pos[1] + 0)
             self.poi.pos = (self.pal.pos[0] - 10, self.pal.pos[1] + 35)
             self.mid.pos = (self.pal.pos[0] + 5, self.pal.pos[1] + 35)
@@ -287,11 +288,11 @@ class ExampleApp(App):
             #self.line(f"vel = ({"{0:.2g}".format(gx1)}, {"{0:.2g}".format(gy1)}, {"{0:.2g}".format(gz1)}) inx = {"{0:.2g}".format(radX)}")
             match self.hand.mode:
                 case self.hand.Modes.GYRO_XY:
-                    self.hand.update_hand(True, (gx1, -gy1), None, None, None, None, None)
+                    self.hand.update_hand(False, (gx1, -gy1), None, None, None, None, None)
                 case self.hand.Modes.GYRO_ZY:
-                    self.hand.update_hand(True, (gz1, -gy1), None, None, None, None, None)
+                    self.hand.update_hand(False, (gz1, -gy1), None, None, None, None, None)
                 case self.hand.Modes.GYRO_ZX:
-                    self.hand.update_hand(True, (gz1, gx1), None, None, None, None, None)
+                    self.hand.update_hand(False, (gz1, gx1), None, None, None, None, None)
         elif data.startswith(EXTRA_HEADER):
             if self.connect_disconnect_button.text == GLOVE_RECALIBRATING and self.calibrate_flag == True:
                 self.connect_disconnect_button.text = DISCONNECT_AVAILABLE
