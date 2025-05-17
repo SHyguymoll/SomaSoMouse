@@ -120,7 +120,7 @@ class LabelWithDropdown():
         self.box_h.add_widget(self.box_v)
         self.parent.add_widget(self.box_h)
 
-class ExampleApp(App):
+class GloveWindowApp(App):
     def __init__(self):
         super().__init__()
         self.label = None
@@ -333,7 +333,7 @@ class ExampleApp(App):
         instance.bind(on_press=self.connect_button)
         instance.text = CONNECT_AVAILABLE
 
-async def main(app : ExampleApp):
+async def main(app : GloveWindowApp):
     await app.async_run("asyncio")
     # for safety, incase glove was connected, disconnect now
     await app.client.disconnect()
@@ -341,5 +341,5 @@ async def main(app : ExampleApp):
 if __name__ == "__main__":
     Logger.setLevel(logging.DEBUG)
 
-app = ExampleApp()
+app = GloveWindowApp()
 asyncio.run(main(app))
