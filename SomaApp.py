@@ -189,24 +189,33 @@ class ExampleApp(App):
             case self.use_accel:
                 match self.hand.mode:
                     case self.hand.Modes.GYRO_XY:
+                        self.line("Changed mode to ACCEL, XY")
                         self.hand.mode = self.hand.Modes.ACCEL_XY
                     case self.hand.Modes.GYRO_ZY:
+                        self.line("Changed mode to ACCEL, ZY")
                         self.hand.mode = self.hand.Modes.ACCEL_ZY
                     case self.hand.Modes.GYRO_ZX:
+                        self.line("Changed mode to ACCEL, ZX")
                         self.hand.mode = self.hand.Modes.ACCEL_ZX
             case self.use_gyro:
                 match self.hand.mode:
                     case self.hand.Modes.ACCEL_XY:
+                        self.line("Changed mode to GYRO, XY")
                         self.hand.mode = self.hand.Modes.GYRO_XY
                     case self.hand.Modes.ACCEL_ZY:
+                        self.line("Changed mode to GYRO, ZY")
                         self.hand.mode = self.hand.Modes.GYRO_ZY
                     case self.hand.Modes.ACCEL_ZX:
+                        self.line("Changed mode to GYRO, ZX")
                         self.hand.mode = self.hand.Modes.GYRO_ZX
             case self.xy_but:
+                self.line(f"Changed mode to {"ACCEL" if self.hand.mode_is_accel() else "GYRO"}, XY")
                 self.hand.mode = self.hand.Modes.ACCEL_XY if self.hand.mode_is_accel() else self.hand.Modes.GYRO_XY
             case self.zy_but:
+                self.line(f"Changed mode to {"ACCEL" if self.hand.mode_is_accel() else "GYRO"}, ZY")
                 self.hand.mode = self.hand.Modes.ACCEL_ZY if self.hand.mode_is_accel() else self.hand.Modes.GYRO_ZY
             case self.zx_but:
+                self.line(f"Changed mode to {"ACCEL" if self.hand.mode_is_accel() else "GYRO"}, ZX")
                 self.hand.mode = self.hand.Modes.ACCEL_ZX if self.hand.mode_is_accel() else self.hand.Modes.GYRO_ZX
     
     def invert_dir(self, instance, state):
