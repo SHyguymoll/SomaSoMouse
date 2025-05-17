@@ -34,7 +34,6 @@ FINGER2_HEADER = bytearray(b'\xF2\xF2')
 ROTATION_HEADER = bytearray(b'\xF3\xF3')
 EXTRA_HEADER = bytearray(b'\xF4\xF4')
 
-
 Window.size = (640, 480)
 
 PLEASE_WAIT = "Connection Failed!\nPlease Wait..."
@@ -114,7 +113,8 @@ class ExampleApp(App):
         super().__init__()
         self.label = None
         self.running = True
-        self.client = bleak.BleakClient(address)
+        self.disc_purposeful = False
+        self.client = bleak.BleakClient(address, self.glove_disconnected)
 
     def build(self):
         #outer box
@@ -163,6 +163,11 @@ class ExampleApp(App):
     def reset_glove_text(self, _dt):
         self.connect_disconnect_button.text = CONNECT_AVAILABLE
     
+    def glove_disconnected(self, client : bleak.BleakClient):
+        if self.disc_purposeful:
+            return
+        self.line("Glove lost connection!")
+    
     def line(self, text, empty=False):
         Logger.info(text)
         if self.label is None:
@@ -172,6 +177,8 @@ class ExampleApp(App):
             self.label.text = text
         else:
             self.label.text += text
+            if len(self.label.text.split("\n")) > 5:
+                self.label.text = "\n".join(self.label.text.split("\n")[1:])
 
     def on_stop(self):
         self.running = False
@@ -213,19 +220,21 @@ class ExampleApp(App):
             self.line("!!!!malformed packet!!!!")
     
     async def connect(self, instance):
-        self.line(f"Attempting Connect")
+        self.line(f"Attempting Connect", True)
         instance.text = CONNECTING
         try:
             await self.client.connect()
             await self.client.start_notify("FFE1", self.callback)
-            if instance is not None:
-                instance.text = DISCONNECT_AVAILABLE
-                instance.bind(on_press=self.disconnect_button)
+            self.disc_purposeful = False
+            instance.text = DISCONNECT_AVAILABLE
+            instance.bind(on_press=self.disconnect_button)
         except bleak.exc.BleakDeviceNotFoundError:
             self.connect_disconnect_button.text = PLEASE_WAIT
+            self.line("Glove was not found.", True)
             Clock.schedule_once(self.reset_glove_text, 3.0)
     
     async def disconnect(self, instance):
+        self.disc_purposeful = True
         instance.text = DISCONNECTING
         await self.client.disconnect()
         instance.bind(on_press=self.connect_button)
