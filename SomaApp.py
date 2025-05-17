@@ -83,7 +83,7 @@ class Hand(FloatLayout):
             if is_accel:
                 self.pal.pos = (new_pos[0] * 1000 + Window.width / 2., new_pos[1] * 1000 + Window.height / 2.)
             else:
-                self.pal.pos = (self.pal.pos[0] + new_pos[0], self.pal.pos[1] + new_pos[1])
+                self.pal.pos = (self.pal.pos[0] + (new_pos[0] * 0.01), self.pal.pos[1] + (new_pos[1] * 0.01))
             self.thu.pos = (self.pal.pos[0] - 20, self.pal.pos[1] + 0)
             self.poi.pos = (self.pal.pos[0] - 10, self.pal.pos[1] + 35)
             self.mid.pos = (self.pal.pos[0] + 5, self.pal.pos[1] + 35)
