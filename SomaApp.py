@@ -31,8 +31,8 @@ address = "f8:2e:0c:a6:53:bf"
 import struct
 
 FINGER1_HEADER = bytearray(b'\xF1\xF1')
-FINGER2_HEADER = bytearray(b'\xF2\xF2')
-ROTATION_HEADER = bytearray(b'\xF3\xF3')
+FINGER_ACCEL_HEADER = bytearray(b'\xF2\xF2')
+GYRO_HEADER = bytearray(b'\xF3\xF3')
 EXTRA_HEADER = bytearray(b'\xF4\xF4')
 
 Window.size = (640, 480)
@@ -266,7 +266,7 @@ class ExampleApp(App):
             thumb, pointer, middle, ring = struct.unpack_from("4f", data, 2)
             #self.line(f"thumb = {thumb}, pointer = {pointer}, middle = {middle}, ring = {ring}")
             self.hand.update_hand(None, None, thumb, pointer, middle, ring, None)
-        elif data.startswith(FINGER2_HEADER):
+        elif data.startswith(FINGER_ACCEL_HEADER):
             if self.connect_disconnect_button.text == GLOVE_RECALIBRATING and self.calibrate_flag == True:
                 self.connect_disconnect_button.text = DISCONNECT_AVAILABLE
                 self.calibrate_flag = False
@@ -279,12 +279,11 @@ class ExampleApp(App):
                     self.hand.update_hand(True, (az1, -ay1), None, None, None, None, pinky)
                 case self.hand.Modes.ACCEL_ZX:
                     self.hand.update_hand(True, (az1, ax1), None, None, None, None, pinky)
-        elif data.startswith(ROTATION_HEADER):
+        elif data.startswith(GYRO_HEADER):
             if self.connect_disconnect_button.text == GLOVE_RECALIBRATING and self.calibrate_flag == True:
                 self.connect_disconnect_button.text = DISCONNECT_AVAILABLE
                 self.calibrate_flag = False
             gx1, gy1, gz1, radX = struct.unpack_from("4f", data, 2)
-            #self.transf.rot["x"], self.transf.rot["y"], self.transf.rot["z"], self.transf.inclin["x"] = gx1, gy1, gz1, radX
             self.line(f"vel = ({"{0:.2g}".format(gx1)}, {"{0:.2g}".format(gy1)}, {"{0:.2g}".format(gz1)}) inx = {"{0:.2g}".format(radX)}")
             match self.hand.mode:
                 case self.hand.Modes.GYRO_XY:
@@ -298,7 +297,6 @@ class ExampleApp(App):
                 self.connect_disconnect_button.text = DISCONNECT_AVAILABLE
                 self.calibrate_flag = False
             radY = struct.unpack_from("f", data, 2)
-            #self.transf.inclin["y"] = radY
             self.line(f"iny = {radY}")
         elif data == b'-----CALIBRATING----':
             self.connect_disconnect_button.text = GLOVE_RECALIBRATING
