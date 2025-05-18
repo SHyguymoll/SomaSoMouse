@@ -14,6 +14,8 @@ from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.togglebutton import ToggleButton
 
 from kivy.graphics import Color, Rectangle
+
+import pyautogui
 #import renderer
 
 
@@ -65,6 +67,7 @@ class Hand(FloatLayout):
     
     gyro_deadzone_r_signed = 100.
     gyro_sens = 0.01
+    prev_pos = (Window.size[0] / 2, Window.size[1] / 2)
 
     def mode_is_accel(self) -> bool:
         return self.mode in [self.Modes.ACCEL_XY, self.Modes.ACCEL_ZY, self.Modes.ACCEL_ZX]
@@ -83,23 +86,29 @@ class Hand(FloatLayout):
     
     def update_hand(self, is_accel : bool, new_pos : tuple[float, float], thu_s : float, poi_s : float, mid_s : float, rin_s : float, pin_s : float):
         if new_pos is not None and self.mode_is_accel() == is_accel:
+            self.prev_pos = self.pal.pos
             new_pos = (new_pos[0] * (-1 if self.invert_hor else 1), new_pos[1] * (-1 if self.invert_ver else 1))
             #Logger.info(str(new_pos) + " " + str(is_accel))
             if is_accel:
                 new_pos = (new_pos[0] * 1000 + Window.width / 2., new_pos[1] * 1000 + Window.height / 2.)
-                new_dif = (self.pal.pos[0] - new_pos[0], self.pal.pos[1] - new_pos[1])
+                new_dif = (self.prev_pos[0] - new_pos[0], self.prev_pos[1] - new_pos[1])
                 new_dif_dist_signed = pow(new_dif[0], 2) + pow(new_dif[1], 2)
                 Logger.info(str(new_dif) + " " + str(new_dif_dist_signed))
                 if new_dif_dist_signed >= self.accel_deadzone_signed:
                     self.pal.pos = new_pos
+                    # need to flip y position as kivy starts from bottom left while pyautogui starts from top left
+                    pyautogui.moveRel(new_pos[0] - self.prev_pos[0], -(new_pos[1] - self.prev_pos[1]))
             else:
                 if pow(new_pos[0], 2) + pow(new_pos[1], 2) >= self.gyro_deadzone_r_signed:
-                    self.pal.pos = (self.pal.pos[0] + (new_pos[0] * self.gyro_sens), self.pal.pos[1] + (new_pos[1] * self.gyro_sens))
-            self.thu.pos = (self.pal.pos[0] - 20, self.pal.pos[1] + 0)
-            self.poi.pos = (self.pal.pos[0] - 10, self.pal.pos[1] + 35)
-            self.mid.pos = (self.pal.pos[0] + 5, self.pal.pos[1] + 35)
-            self.rin.pos = (self.pal.pos[0] + 20, self.pal.pos[1] + 35)
-            self.pin.pos = (self.pal.pos[0] + 35, self.pal.pos[1] + 35)
+                    self.pal.pos = (self.prev_pos[0] + (new_pos[0] * self.gyro_sens), self.prev_pos[1] + (new_pos[1] * self.gyro_sens))
+                    # ditto
+                    pyautogui.moveRel(new_pos[0] - self.prev_pos[0], -(new_pos[1] - self.prev_pos[1]))
+            self.thu.pos = (self.prev_pos[0] - 20, self.prev_pos[1] + 0)
+            self.poi.pos = (self.prev_pos[0] - 10, self.prev_pos[1] + 35)
+            self.mid.pos = (self.prev_pos[0] + 5, self.prev_pos[1] + 35)
+            self.rin.pos = (self.prev_pos[0] + 20, self.prev_pos[1] + 35)
+            self.pin.pos = (self.prev_pos[0] + 35, self.prev_pos[1] + 35)
+
         if thu_s is not None:
             self.thu.size = (10, (thu_s * 10.) / self.CLOSED)
         if poi_s is not None:
@@ -240,6 +249,10 @@ class GloveWindowApp(App):
     def connect_button(self, instance):
         if instance.text != CONNECT_AVAILABLE:
             return
+        x, y = pyautogui.size()
+        pyautogui.moveTo(x / 2, y / 2)
+        self.hand.pos = (Window.size[0] / 2, Window.size[1] / 2)
+        self.hand.prev_pos = (Window.size[0] / 2, Window.size[1] / 2)
         asyncio.create_task(self.connect(instance))
     
     def disconnect_button(self, instance):
