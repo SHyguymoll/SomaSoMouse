@@ -86,28 +86,29 @@ class Hand(FloatLayout):
     
     def update_hand(self, is_accel : bool, new_pos : tuple[float, float], thu_s : float, poi_s : float, mid_s : float, rin_s : float, pin_s : float):
         if new_pos is not None and self.mode_is_accel() == is_accel:
-            self.prev_pos = self.pal.pos
-            new_pos = (new_pos[0] * (-1 if self.invert_hor else 1), new_pos[1] * (-1 if self.invert_ver else 1))
-            #Logger.info(str(new_pos) + " " + str(is_accel))
-            if is_accel:
-                new_pos = (new_pos[0] * 1000 + Window.width / 2., new_pos[1] * 1000 + Window.height / 2.)
-                new_dif = (self.prev_pos[0] - new_pos[0], self.prev_pos[1] - new_pos[1])
-                new_dif_dist_signed = pow(new_dif[0], 2) + pow(new_dif[1], 2)
-                Logger.info(str(new_dif) + " " + str(new_dif_dist_signed))
-                if new_dif_dist_signed >= self.accel_deadzone_signed:
-                    self.pal.pos = new_pos
-                    # need to flip y position as kivy starts from bottom left while pyautogui starts from top left
-                    pyautogui.moveRel(new_pos[0] - self.prev_pos[0], -(new_pos[1] - self.prev_pos[1]))
-            else:
-                if pow(new_pos[0], 2) + pow(new_pos[1], 2) >= self.gyro_deadzone_r_signed:
-                    self.pal.pos = (self.prev_pos[0] + (new_pos[0] * self.gyro_sens), self.prev_pos[1] + (new_pos[1] * self.gyro_sens))
-                    # ditto
-                    pyautogui.moveRel(new_pos[0] - self.prev_pos[0], -(new_pos[1] - self.prev_pos[1]))
-            self.thu.pos = (self.prev_pos[0] - 20, self.prev_pos[1] + 0)
-            self.poi.pos = (self.prev_pos[0] - 10, self.prev_pos[1] + 35)
-            self.mid.pos = (self.prev_pos[0] + 5, self.prev_pos[1] + 35)
-            self.rin.pos = (self.prev_pos[0] + 20, self.prev_pos[1] + 35)
-            self.pin.pos = (self.prev_pos[0] + 35, self.prev_pos[1] + 35)
+            if self.mid.size[1] < 12.5 and self.rin.size[1] < 12.5 and self.pin.size[1] < 12.5:
+                self.prev_pos = self.pal.pos
+                new_pos = (new_pos[0] * (-1 if self.invert_hor else 1), new_pos[1] * (-1 if self.invert_ver else 1))
+                #Logger.info(str(new_pos) + " " + str(is_accel))
+                if is_accel:
+                    new_pos = (new_pos[0] * 1000 + Window.width / 2., new_pos[1] * 1000 + Window.height / 2.)
+                    new_dif = (self.prev_pos[0] - new_pos[0], self.prev_pos[1] - new_pos[1])
+                    new_dif_dist_signed = pow(new_dif[0], 2) + pow(new_dif[1], 2)
+                    Logger.info(str(new_dif) + " " + str(new_dif_dist_signed))
+                    if new_dif_dist_signed >= self.accel_deadzone_signed:
+                        self.pal.pos = new_pos
+                        # need to flip y position as kivy starts from bottom left while pyautogui starts from top left
+                        pyautogui.moveRel(new_pos[0] - self.prev_pos[0], -(new_pos[1] - self.prev_pos[1]))
+                else:
+                    if pow(new_pos[0], 2) + pow(new_pos[1], 2) >= self.gyro_deadzone_r_signed:
+                        self.pal.pos = (self.prev_pos[0] + (new_pos[0] * self.gyro_sens), self.prev_pos[1] + (new_pos[1] * self.gyro_sens))
+                        # ditto
+                        pyautogui.moveRel(new_pos[0], -(new_pos[1]))
+                self.thu.pos = (self.prev_pos[0] - 20, self.prev_pos[1] + 0)
+                self.poi.pos = (self.prev_pos[0] - 10, self.prev_pos[1] + 35)
+                self.mid.pos = (self.prev_pos[0] + 5, self.prev_pos[1] + 35)
+                self.rin.pos = (self.prev_pos[0] + 20, self.prev_pos[1] + 35)
+                self.pin.pos = (self.prev_pos[0] + 35, self.prev_pos[1] + 35)
 
         if thu_s is not None:
             self.thu.size = (10, (thu_s * 10.) / self.CLOSED)
@@ -292,21 +293,22 @@ class GloveWindowApp(App):
                 self.connect_disconnect_button.text = DISCONNECT_AVAILABLE
                 self.calibrate_flag = False
             thumb, pointer, middle, ring = struct.unpack_from("4f", data, 2)
-            #self.line(f"thumb = {thumb}, pointer = {pointer}, middle = {middle}, ring = {ring}")
+            self.line(f"thumb = {thumb}, pointer = {pointer}, middle = {middle}, ring = {ring}")
             self.hand.update_hand(None, None, thumb, pointer, middle, ring, None)
         elif data.startswith(FINGER_ACCEL_HEADER):
             if self.connect_disconnect_button.text == GLOVE_RECALIBRATING and self.calibrate_flag == True:
                 self.connect_disconnect_button.text = DISCONNECT_AVAILABLE
                 self.calibrate_flag = False
             pinky, ax1, ay1, az1 = struct.unpack_from("4f", data, 2)
-            #self.line(f"pos = ({"{0:.2g}".format(ax1)}, {"{0:.2g}".format(ay1)}, {"{0:.2g}".format(az1)})")
+            self.line(f"pos = ({"{0:.2g}".format(ax1)}, {"{0:.2g}".format(ay1)}, {"{0:.2g}".format(az1)})")
+            self.hand.update_hand(True, None, None, None, None, None, pinky)
             match self.hand.mode:
                 case self.hand.Modes.ACCEL_XY:
-                    self.hand.update_hand(True, (ax1, -ay1), None, None, None, None, pinky)
+                    self.hand.update_hand(True, (ax1, -ay1), None, None, None, None, None)
                 case self.hand.Modes.ACCEL_ZY:
-                    self.hand.update_hand(True, (az1, -ay1), None, None, None, None, pinky)
+                    self.hand.update_hand(True, (az1, -ay1), None, None, None, None, None)
                 case self.hand.Modes.ACCEL_ZX:
-                    self.hand.update_hand(True, (az1, ax1), None, None, None, None, pinky)
+                    self.hand.update_hand(True, (az1, ax1), None, None, None, None, None)
         elif data.startswith(GYRO_HEADER):
             if self.connect_disconnect_button.text == GLOVE_RECALIBRATING and self.calibrate_flag == True:
                 self.connect_disconnect_button.text = DISCONNECT_AVAILABLE
