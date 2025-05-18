@@ -196,6 +196,9 @@ class GloveWindowApp(App):
         self.connect_disconnect_button = Button(text=CONNECT_AVAILABLE, size_hint = (1, .125))
         self.connect_disconnect_button.bind(on_press=self.connect_button)
         self.layout_side.add_widget(self.connect_disconnect_button)
+        # debug label for immediate position and stretch values
+        self.debug_line = Label(font_size="12sp")
+        self.layout_side.add_widget(self.debug_line)
         # debug scroll for debugging (who could've guessed)
         self.scrollview = ScrollView(do_scroll_x=False, scroll_type=["bars", "content"])
         self.layout_side.add_widget(self.scrollview)
@@ -277,7 +280,7 @@ class GloveWindowApp(App):
             self.label.text = text
         else:
             self.label.text += text
-            if len(self.label.text.split("\n")) > 5:
+            if len(self.label.text.split("\n")) > 15:
                 self.label.text = "\n".join(self.label.text.split("\n")[1:])
 
     def on_stop(self):
@@ -309,7 +312,7 @@ class GloveWindowApp(App):
                 self.connect_disconnect_button.text = DISCONNECT_AVAILABLE
                 self.calibrate_flag = False
             gy1, gx1, gz1, radX = struct.unpack_from("4f", data, 2)
-            #self.line(f"vel = ({"{0:.2g}".format(gx1)}, {"{0:.2g}".format(gy1)}, {"{0:.2g}".format(gz1)}) inx = {"{0:.2g}".format(radX)}")
+            self.line(f"vel = ({"{0:.2g}".format(gx1)}, {"{0:.2g}".format(gy1)}, {"{0:.2g}".format(gz1)}) inx = {"{0:.2g}".format(radX)}")
             match self.hand.mode:
                 case self.hand.Modes.GYRO_XY:
                     self.hand.update_hand(False, (gx1, -gy1), None, None, None, None, None)
@@ -322,13 +325,14 @@ class GloveWindowApp(App):
                 self.connect_disconnect_button.text = DISCONNECT_AVAILABLE
                 self.calibrate_flag = False
             radY = struct.unpack_from("f", data, 2)
-            #self.line(f"iny = {radY}")
+            self.line(f"iny = {radY}")
         elif data == b'-----CALIBRATING----':
             self.connect_disconnect_button.text = GLOVE_RECALIBRATING
             self.calibrate_flag = True
             pass
         else:
             self.line("!!!!malformed packet!!!!")
+        self.debug_line.text = f"{self.hand.pal.pos}\n{self.hand.thu.size[1]}\n{self.hand.poi.size[1]}\n{self.hand.mid.size[1]}\n{self.hand.rin.size[1]}\n{self.hand.pin.size[1]}"
     
     async def connect(self, instance):
         self.line(f"Attempting Connect", True)
